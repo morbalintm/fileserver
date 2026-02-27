@@ -2,190 +2,302 @@
 <html lang="hu">
 <head>
 <meta charset="UTF-8">
-<title>Web Linux Terminal</title>
+<title>Web OS</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
-body {
+*{box-sizing:border-box;margin:0;padding:0;font-family:Segoe UI,sans-serif}
+
+body{
+    height:100vh;
+    background:#0f0f0f;
+    color:white;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+
+/* START SCREEN */
+
+#startScreen{
+    text-align:center;
+}
+
+.startBtn{
+    display:block;
+    margin:20px auto;
+    padding:15px 40px;
+    font-size:18px;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+    background:#1f1f1f;
+    color:#0f0;
+    border:1px solid #0f0;
+    transition:0.3s;
+}
+
+.startBtn:hover{
+    background:#0f0;
+    color:#000;
+}
+
+/* TERMINAL */
+
+#terminalMode{
+    display:none;
+    width:100%;
+    height:100%;
+    padding:20px;
     background:#000;
     color:#0f0;
     font-family:monospace;
-    margin:0;
-    padding:15px;
+    overflow:auto;
 }
 
-#terminal {
-    white-space:pre-wrap;
-}
-
-input {
+input{
     background:transparent;
     border:none;
     color:#0f0;
-    font-family:monospace;
     outline:none;
-    width:80%;
+    font-family:monospace;
+}
+
+/* UI MODE */
+
+#uiMode{
+    display:none;
+    width:100%;
+    height:100%;
+    display:flex;
+}
+
+.sidebar{
+    width:250px;
+    background:#1c1c1c;
+    padding:15px;
+    overflow-y:auto;
+}
+
+.editor{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+}
+
+textarea{
+    flex:1;
+    background:#111;
+    color:white;
+    border:none;
+    padding:15px;
+    resize:none;
+    outline:none;
+}
+
+button{
+    margin:5px 0;
+    padding:6px;
+    border:none;
+    cursor:pointer;
+    background:#333;
+    color:white;
+}
+
+.file{
+    padding:5px;
+    cursor:pointer;
+}
+
+.file:hover{
+    background:#333;
 }
 </style>
 </head>
+
 <body>
 
-<div id="terminal"></div>
+<div id="startScreen">
+    <h1>Web OS</h1>
+    <button class="startBtn" onclick="startTerminal()">Linux Terminal</button>
+    <button class="startBtn" onclick="startUI()">Grafikus UI</button>
+</div>
+
+<div id="terminalMode"></div>
+
+<div id="uiMode">
+    <div class="sidebar">
+        <button onclick="newFile()">Új fájl</button>
+        <button onclick="newFolder()">Új mappa</button>
+        <button onclick="deleteFile()">Törlés</button>
+        <input type="text" id="search" placeholder="Keresés">
+        <div id="fileList"></div>
+    </div>
+    <div class="editor">
+        <textarea id="editor"></textarea>
+        <button onclick="saveFile()">Mentés</button>
+    </div>
+</div>
 
 <script>
-let fileSystem = JSON.parse(localStorage.getItem("vfs")) || {
-    home: {
-        user: {
-            "readme.txt": "Üdv a Web Linux Terminalben!"
-        }
-    }
+
+/* VIRTUAL FILE SYSTEM */
+
+let fs = JSON.parse(localStorage.getItem("webos")) || {
+    home:{}
 };
 
-let currentPath = ["home","user"];
-let history = [];
-let historyIndex = -1;
+let currentPath=["home"];
+let currentFile=null;
 
-const terminal = document.getElementById("terminal");
+/* START MODES */
 
-function saveFS(){
-    localStorage.setItem("vfs", JSON.stringify(fileSystem));
+function startTerminal(){
+    document.getElementById("startScreen").style.display="none";
+    const term=document.getElementById("terminalMode");
+    term.style.display="block";
+    initTerminal();
 }
 
-function getCurrentDir(){
-    let dir = fileSystem;
-    currentPath.forEach(p => dir = dir[p]);
-    return dir;
+function startUI(){
+    document.getElementById("startScreen").style.display="none";
+    document.getElementById("uiMode").style.display="flex";
+    renderFiles();
 }
 
-function renderPrompt(){
-    terminal.innerHTML += `\nuser@web:/${currentPath.join("/")}$ `;
-    const input = document.createElement("input");
-    terminal.appendChild(input);
+/* TERMINAL */
+
+function initTerminal(){
+    const term=document.getElementById("terminalMode");
+    term.innerHTML="Web Linux Terminal\nType help\n";
+    prompt();
+}
+
+function prompt(){
+    const term=document.getElementById("terminalMode");
+    term.innerHTML+=`\nuser@web:/${currentPath.join("/")}$ `;
+    const input=document.createElement("input");
+    term.appendChild(input);
     input.focus();
 
-    input.addEventListener("keydown", e=>{
+    input.addEventListener("keydown",e=>{
         if(e.key==="Enter"){
-            const cmd = input.value;
-            history.push(cmd);
-            historyIndex = history.length;
-            terminal.innerHTML += cmd;
+            const val=input.value;
+            term.innerHTML+=val;
             input.remove();
-            execute(cmd);
-            renderPrompt();
-        }
-
-        if(e.key==="ArrowUp"){
-            if(historyIndex>0){
-                historyIndex--;
-                input.value = history[historyIndex];
-            }
-        }
-
-        if(e.key==="ArrowDown"){
-            if(historyIndex<history.length-1){
-                historyIndex++;
-                input.value = history[historyIndex];
-            }
-        }
-
-        if(e.key==="Tab"){
-            e.preventDefault();
-            autocomplete(input);
+            exec(val);
+            prompt();
         }
     });
 
-    window.scrollTo(0,document.body.scrollHeight);
+    term.scrollTop=term.scrollHeight;
 }
 
-function execute(command){
-    const [cmd,...args] = command.split(" ");
+function getDir(){
+    let dir=fs;
+    currentPath.forEach(p=>dir=dir[p]);
+    return dir;
+}
 
-    switch(cmd){
+function exec(cmd){
+    const term=document.getElementById("terminalMode");
+    const [c,arg]=cmd.split(" ");
 
+    switch(c){
         case "ls":
-            const dir = getCurrentDir();
-            terminal.innerHTML += "\n" + Object.keys(dir).join("  ");
+            term.innerHTML+="\n"+Object.keys(getDir()).join(" ");
             break;
-
         case "pwd":
-            terminal.innerHTML += "\n/" + currentPath.join("/");
+            term.innerHTML+="\n/"+currentPath.join("/");
             break;
-
-        case "cd":
-            changeDir(args[0]);
-            break;
-
         case "mkdir":
-            getCurrentDir()[args[0]] = {};
-            saveFS();
+            getDir()[arg]={};
+            save();
             break;
-
         case "touch":
-            getCurrentDir()[args[0]] = "";
-            saveFS();
+            getDir()[arg]="";
+            save();
             break;
-
-        case "rm":
-            delete getCurrentDir()[args[0]];
-            saveFS();
+        case "cd":
+            if(arg==="..") currentPath.pop();
+            else if(getDir()[arg]) currentPath.push(arg);
             break;
-
         case "cat":
-            terminal.innerHTML += "\n" + getCurrentDir()[args[0]];
+            term.innerHTML+="\n"+getDir()[arg];
             break;
-
+        case "rm":
+            delete getDir()[arg];
+            save();
+            break;
         case "clear":
-            terminal.innerHTML="";
+            term.innerHTML="";
             break;
-
         case "help":
-            terminal.innerHTML += `
-            
-ls
-cd <dir>
-pwd
-mkdir <name>
-touch <name>
-rm <name>
-cat <file>
-clear
-help
-`;
+            term.innerHTML+=`\nls cd pwd mkdir touch rm cat clear help`;
             break;
-
         default:
-            if(cmd.trim()!=="")
-                terminal.innerHTML += "\nCommand not found";
+            term.innerHTML+="\nCommand not found";
     }
 }
 
-function changeDir(target){
-    if(target===".."){
-        if(currentPath.length>0) currentPath.pop();
-        return;
-    }
+/* UI MODE */
 
-    const dir = getCurrentDir();
-    if(dir[target] && typeof dir[target]==="object"){
-        currentPath.push(target);
-    } else {
-        terminal.innerHTML += "\nNo such directory";
+function renderFiles(){
+    const list=document.getElementById("fileList");
+    list.innerHTML="";
+    Object.keys(getDir()).forEach(name=>{
+        const div=document.createElement("div");
+        div.className="file";
+        div.textContent=name;
+        div.onclick=()=>openFile(name);
+        list.appendChild(div);
+    });
+}
+
+function newFile(){
+    const name=prompt("Fájlnév:");
+    if(!name) return;
+    getDir()[name]="";
+    save();
+    renderFiles();
+}
+
+function newFolder(){
+    const name=prompt("Mappanév:");
+    if(!name) return;
+    getDir()[name]={};
+    save();
+    renderFiles();
+}
+
+function openFile(name){
+    currentFile=name;
+    if(typeof getDir()[name]==="string"){
+        document.getElementById("editor").value=getDir()[name];
     }
 }
 
-function autocomplete(input){
-    const value = input.value.split(" ");
-    if(value.length<2) return;
-    const partial = value[1];
-    const dir = getCurrentDir();
-    const match = Object.keys(dir).find(name=>name.startsWith(partial));
-    if(match){
-        value[1] = match;
-        input.value = value.join(" ");
+function saveFile(){
+    if(currentFile){
+        getDir()[currentFile]=document.getElementById("editor").value;
+        save();
     }
 }
 
-terminal.innerHTML="Web Linux Terminal\nType 'help'\n";
-renderPrompt();
+function deleteFile(){
+    if(currentFile){
+        delete getDir()[currentFile];
+        document.getElementById("editor").value="";
+        currentFile=null;
+        save();
+        renderFiles();
+    }
+}
+
+function save(){
+    localStorage.setItem("webos",JSON.stringify(fs));
+}
+
 </script>
-
 </body>
 </html>
