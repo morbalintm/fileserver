@@ -3,62 +3,80 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WebNAS OS</title>
+<title>MORNAS OS</title>
 
 <style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:Segoe UI,sans-serif}
+*{margin:0;padding:0;box-sizing:border-box;font-family:Inter,Segoe UI,sans-serif}
 
 body{
     height:100vh;
-    background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
     overflow:hidden;
-    color:white;
+    background:linear-gradient(135deg,#0f172a,#1e293b,#0f172a);
+    color:#fff;
 }
 
 /* LOGIN */
 
 #loginScreen{
+    position:absolute;
+    inset:0;
     display:flex;
     justify-content:center;
     align-items:center;
-    height:100%;
+    background:radial-gradient(circle at top,#1e293b,#0f172a);
 }
 
 .loginBox{
-    background:rgba(255,255,255,0.1);
-    backdrop-filter:blur(25px);
+    width:320px;
     padding:40px;
     border-radius:20px;
-    width:300px;
+    backdrop-filter:blur(30px);
+    background:rgba(255,255,255,0.08);
+    box-shadow:0 0 40px rgba(0,0,0,0.6);
 }
 
-input{
+.loginBox h2{margin-bottom:20px;text-align:center}
+
+.loginBox input{
     width:100%;
     margin:10px 0;
-    padding:8px;
+    padding:10px;
+    border-radius:10px;
     border:none;
-    border-radius:8px;
+    background:rgba(255,255,255,0.1);
+    color:#fff;
+}
+
+.loginBox button{
+    width:100%;
+    padding:10px;
+    margin-top:10px;
+    border:none;
+    border-radius:10px;
+    background:#2563eb;
+    color:#fff;
+    cursor:pointer;
 }
 
 /* DESKTOP */
 
 #desktop{
     display:none;
-    width:100%;
-    height:100%;
-    position:relative;
+    position:absolute;
+    inset:0;
 }
 
 /* TOPBAR */
 
 #topbar{
     height:50px;
-    background:rgba(255,255,255,0.1);
-    backdrop-filter:blur(20px);
     display:flex;
-    align-items:center;
     justify-content:space-between;
+    align-items:center;
     padding:0 20px;
+    backdrop-filter:blur(25px);
+    background:rgba(255,255,255,0.08);
+    border-bottom:1px solid rgba(255,255,255,0.1);
 }
 
 /* SIDEBAR */
@@ -66,62 +84,81 @@ input{
 #sidebar{
     position:absolute;
     top:50px;
-    left:0;
-    width:200px;
     bottom:0;
-    background:rgba(0,0,0,0.3);
-    padding:10px;
+    left:0;
+    width:220px;
+    padding:15px;
+    backdrop-filter:blur(25px);
+    background:rgba(255,255,255,0.05);
+    border-right:1px solid rgba(255,255,255,0.1);
 }
 
 .appBtn{
-    padding:10px;
+    padding:12px;
     margin:10px 0;
+    border-radius:12px;
     cursor:pointer;
-    background:rgba(255,255,255,0.1);
-    border-radius:10px;
+    background:rgba(255,255,255,0.08);
+    transition:.2s;
 }
 
-/* WINDOW */
+.appBtn:hover{
+    background:rgba(255,255,255,0.15);
+}
 
-.window{
+/* WORKSPACE */
+
+#workspace{
     position:absolute;
-    width:600px;
-    height:400px;
-    background:rgba(255,255,255,0.1);
-    backdrop-filter:blur(30px);
-    border-radius:15px;
-    box-shadow:0 0 40px rgba(0,0,0,0.4);
+    top:50px;
+    left:220px;
+    right:0;
+    bottom:0;
     overflow:hidden;
 }
 
+/* WINDOW SYSTEM */
+
+.window{
+    position:absolute;
+    width:700px;
+    height:450px;
+    border-radius:18px;
+    backdrop-filter:blur(30px);
+    background:rgba(255,255,255,0.08);
+    box-shadow:0 0 50px rgba(0,0,0,0.5);
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+}
+
 .window-header{
-    padding:10px;
-    background:rgba(255,255,255,0.15);
-    cursor:move;
+    height:45px;
     display:flex;
     justify-content:space-between;
+    align-items:center;
+    padding:0 15px;
+    background:rgba(255,255,255,0.1);
+    cursor:move;
 }
 
-.window-content{
-    padding:15px;
-    height:calc(100% - 40px);
-    overflow:auto;
-}
-
-button{
-    padding:6px 10px;
+.window-controls button{
+    width:22px;
+    height:22px;
+    margin-left:8px;
     border:none;
-    border-radius:6px;
+    border-radius:50%;
     cursor:pointer;
 }
 
-textarea{
-    width:100%;
-    height:100%;
-    background:transparent;
-    color:white;
-    border:none;
-    outline:none;
+.close{background:#ef4444}
+.min{background:#f59e0b}
+.max{background:#10b981}
+
+.window-content{
+    flex:1;
+    overflow:auto;
+    padding:15px;
 }
 </style>
 </head>
@@ -129,188 +166,164 @@ textarea{
 
 <div id="loginScreen">
     <div class="loginBox">
-        <h2>WebNAS Login</h2>
+        <h2>MORNAS OS</h2>
         <input id="username" placeholder="Username">
         <input id="password" type="password" placeholder="Password">
-        <button onclick="login()">Login / Register</button>
+        <button onclick="auth()">Login / Register</button>
     </div>
 </div>
 
 <div id="desktop">
     <div id="topbar">
-        <div>WebNAS OS</div>
-        <div id="monitor"></div>
+        <div>MORNAS OS Enterprise</div>
+        <div id="status"></div>
     </div>
 
     <div id="sidebar">
-        <div class="appBtn" onclick="openFileManager()">📂 File Manager</div>
-        <div class="appBtn" onclick="openTerminal()">💻 Terminal</div>
-        <div class="appBtn" onclick="openMonitor()">📊 System Monitor</div>
+        <div class="appBtn" onclick="openApp('fileManager')">📂 File Manager</div>
+        <div class="appBtn" onclick="openApp('terminal')">💻 Terminal</div>
+        <div class="appBtn" onclick="openApp('monitor')">📊 System Monitor</div>
     </div>
+
+    <div id="workspace"></div>
 </div>
 
 <script>
 
-/* USER SYSTEM */
+/* ===============================
+   USER + STORAGE SYSTEM
+================================ */
 
-let users = JSON.parse(localStorage.getItem("nas_users")) || {};
-let currentUser=null;
-let fs=null;
-let path=["home"];
+let users = JSON.parse(localStorage.getItem("mornas_users")) || {};
+let currentUser = null;
 
 function saveUsers(){
-    localStorage.setItem("nas_users",JSON.stringify(users));
+    localStorage.setItem("mornas_users",JSON.stringify(users));
 }
 
-function login(){
-    const u=document.getElementById("username").value;
-    const p=document.getElementById("password").value;
+function auth(){
+    const u = username.value.trim();
+    const p = password.value.trim();
+    if(!u || !p) return;
 
     if(!users[u]){
-        users[u]={password:p,fs:{home:{}}};
+        users[u] = {
+            password:p,
+            fs:{root:{home:{}}},
+            created:Date.now()
+        };
         saveUsers();
     }
 
-    if(users[u].password===p){
-        currentUser=u;
-        fs=users[u].fs;
-        document.getElementById("loginScreen").style.display="none";
-        document.getElementById("desktop").style.display="block";
-        startMonitor();
-    } else {
+    if(users[u].password === p){
+        currentUser = u;
+        loginScreen.style.display="none";
+        desktop.style.display="block";
+        startStatusMonitor();
+    }else{
         alert("Wrong password");
     }
 }
 
-/* WINDOW SYSTEM */
+/* ===============================
+   WINDOW MANAGER
+================================ */
 
-function createWindow(title,content){
-    const win=document.createElement("div");
-    win.className="window";
-    win.style.top="100px";
-    win.style.left="250px";
+let zIndexCounter = 10;
 
-    win.innerHTML=`
-    <div class="window-header">
-        <span>${title}</span>
-        <button onclick="this.closest('.window').remove()">X</button>
-    </div>
-    <div class="window-content">${content}</div>
-    `;
+function openApp(type){
 
-    document.getElementById("desktop").appendChild(win);
-    drag(win);
+    let title = "";
+    let content = "";
+
+    if(type==="fileManager"){
+        title="File Manager";
+        content="<div id='fileManagerRoot'>Loading...</div>";
+    }
+
+    if(type==="terminal"){
+        title="Terminal";
+        content="<div id='terminalRoot'>Terminal loading...</div>";
+    }
+
+    if(type==="monitor"){
+        title="System Monitor";
+        content="<div id='monitorRoot'>Loading monitor...</div>";
+    }
+
+    createWindow(title,content);
 }
 
-function drag(el){
-    const header=el.querySelector(".window-header");
+function createWindow(title,content){
+
+    const win = document.createElement("div");
+    win.className="window";
+    win.style.top="80px";
+    win.style.left="100px";
+    win.style.zIndex=++zIndexCounter;
+
+    win.innerHTML=`
+        <div class="window-header">
+            <span>${title}</span>
+            <div class="window-controls">
+                <button class="min"></button>
+                <button class="max"></button>
+                <button class="close"></button>
+            </div>
+        </div>
+        <div class="window-content">${content}</div>
+    `;
+
+    workspace.appendChild(win);
+
+    dragWindow(win);
+    attachControls(win);
+}
+
+function dragWindow(win){
+    const header = win.querySelector(".window-header");
     let isDown=false,offsetX,offsetY;
 
-    header.onmousedown=e=>{
+    header.onmousedown = e=>{
         isDown=true;
-        offsetX=e.clientX-el.offsetLeft;
-        offsetY=e.clientY-el.offsetTop;
+        offsetX=e.clientX-win.offsetLeft;
+        offsetY=e.clientY-win.offsetTop;
+        win.style.zIndex=++zIndexCounter;
     };
 
     document.onmouseup=()=>isDown=false;
 
     document.onmousemove=e=>{
         if(isDown){
-            el.style.left=e.clientX-offsetX+"px";
-            el.style.top=e.clientY-offsetY+"px";
+            win.style.left=(e.clientX-offsetX)+"px";
+            win.style.top=(e.clientY-offsetY)+"px";
         }
     };
 }
 
-/* FILE SYSTEM */
-
-function getDir(){
-    let dir=fs;
-    path.forEach(p=>dir=dir[p]);
-    return dir;
+function attachControls(win){
+    win.querySelector(".close").onclick=()=>win.remove();
+    win.querySelector(".min").onclick=()=>win.style.display="none";
+    win.querySelector(".max").onclick=()=>{
+        win.style.top="0";
+        win.style.left="0";
+        win.style.width="100%";
+        win.style.height="100%";
+    };
 }
 
-/* FILE MANAGER */
+/* ===============================
+   STATUS MONITOR
+================================ */
 
-function openFileManager(){
-    let html="<h3>Files</h3>";
-    Object.keys(getDir()).forEach(name=>{
-        html+=`<div>${name}</div>`;
-    });
-    html+=`<button onclick="createFile()">New File</button>`;
-    createWindow("File Manager",html);
-}
-
-function createFile(){
-    const name=prompt("File name:");
-    if(!name) return;
-    getDir()[name]="";
-    saveUsers();
-}
-
-/* TERMINAL */
-
-function openTerminal(){
-    createWindow("Terminal",`
-        <div id="termOutput"></div>
-        <input id="termInput" style="width:100%;background:black;color:#0f0;">
-    `);
-
-    const input=document.getElementById("termInput");
-    const output=document.getElementById("termOutput");
-
-    input.addEventListener("keydown",e=>{
-        if(e.key==="Enter"){
-            const cmd=input.value;
-            output.innerHTML+="<div>> "+cmd+"</div>";
-            executeTerminal(cmd,output);
-            input.value="";
-        }
-    });
-}
-
-function executeTerminal(cmd,out){
-    const [c,arg]=cmd.split(" ");
-
-    switch(c){
-        case "ls":
-            out.innerHTML+="<div>"+Object.keys(getDir()).join(" ")+"</div>";
-            break;
-        case "mkdir":
-            getDir()[arg]={};
-            saveUsers();
-            break;
-        case "touch":
-            getDir()[arg]="";
-            saveUsers();
-            break;
-        case "pwd":
-            out.innerHTML+="<div>/"+path.join("/")+"</div>";
-            break;
-        case "clear":
-            out.innerHTML="";
-            break;
-        default:
-            out.innerHTML+="<div>Command not found</div>";
-    }
-}
-
-/* SYSTEM MONITOR */
-
-function openMonitor(){
-    createWindow("System Monitor",`
-        <div id="cpu">CPU: 0%</div>
-        <div id="ram">RAM: 0%</div>
-    `);
-}
-
-function startMonitor(){
+function startStatusMonitor(){
     setInterval(()=>{
-        document.getElementById("monitor").innerText=
-        "CPU "+Math.floor(Math.random()*60)+"% | RAM "+Math.floor(Math.random()*80)+"%";
+        document.getElementById("status").innerText=
+            "CPU "+Math.floor(Math.random()*60)+"% | RAM "+Math.floor(Math.random()*80)+"%";
     },2000);
 }
 
 </script>
+
 </body>
 </html>
