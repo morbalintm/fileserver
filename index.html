@@ -3,36 +3,41 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WebOS</title>
+<title>WebNAS OS</title>
 
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:Segoe UI,sans-serif}
 
 body{
-    background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
     height:100vh;
+    background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
     overflow:hidden;
     color:white;
 }
 
-/* TERMINAL */
+/* LOGIN */
 
-#terminalScreen{
-    width:100%;
+#loginScreen{
+    display:flex;
+    justify-content:center;
+    align-items:center;
     height:100%;
-    background:black;
-    color:#00ff88;
-    font-family:monospace;
-    padding:20px;
-    overflow:auto;
+}
+
+.loginBox{
+    background:rgba(255,255,255,0.1);
+    backdrop-filter:blur(25px);
+    padding:40px;
+    border-radius:20px;
+    width:300px;
 }
 
 input{
-    background:transparent;
+    width:100%;
+    margin:10px 0;
+    padding:8px;
     border:none;
-    color:#00ff88;
-    font-family:monospace;
-    outline:none;
+    border-radius:8px;
 }
 
 /* DESKTOP */
@@ -42,51 +47,71 @@ input{
     width:100%;
     height:100%;
     position:relative;
-    backdrop-filter:blur(25px);
 }
 
-/* TASKBAR */
+/* TOPBAR */
 
-#taskbar{
-    position:absolute;
-    bottom:0;
-    width:100%;
+#topbar{
     height:50px;
     background:rgba(255,255,255,0.1);
     backdrop-filter:blur(20px);
     display:flex;
     align-items:center;
-    padding:0 15px;
+    justify-content:space-between;
+    padding:0 20px;
+}
+
+/* SIDEBAR */
+
+#sidebar{
+    position:absolute;
+    top:50px;
+    left:0;
+    width:200px;
+    bottom:0;
+    background:rgba(0,0,0,0.3);
+    padding:10px;
+}
+
+.appBtn{
+    padding:10px;
+    margin:10px 0;
+    cursor:pointer;
+    background:rgba(255,255,255,0.1);
+    border-radius:10px;
 }
 
 /* WINDOW */
 
 .window{
     position:absolute;
-    width:500px;
-    height:350px;
-    background:rgba(255,255,255,0.15);
-    backdrop-filter:blur(20px);
+    width:600px;
+    height:400px;
+    background:rgba(255,255,255,0.1);
+    backdrop-filter:blur(30px);
     border-radius:15px;
-    box-shadow:0 0 30px rgba(0,0,0,0.4);
+    box-shadow:0 0 40px rgba(0,0,0,0.4);
     overflow:hidden;
 }
 
 .window-header{
-    background:rgba(255,255,255,0.1);
-    padding:8px;
+    padding:10px;
+    background:rgba(255,255,255,0.15);
     cursor:move;
-    font-weight:bold;
+    display:flex;
+    justify-content:space-between;
 }
 
 .window-content{
-    padding:10px;
-    height:calc(100% - 35px);
+    padding:15px;
+    height:calc(100% - 40px);
     overflow:auto;
 }
 
-.icon{
-    margin:20px;
+button{
+    padding:6px 10px;
+    border:none;
+    border-radius:6px;
     cursor:pointer;
 }
 
@@ -94,138 +119,83 @@ textarea{
     width:100%;
     height:100%;
     background:transparent;
-    border:none;
     color:white;
+    border:none;
     outline:none;
 }
 </style>
 </head>
 <body>
 
-<div id="terminalScreen"></div>
+<div id="loginScreen">
+    <div class="loginBox">
+        <h2>WebNAS Login</h2>
+        <input id="username" placeholder="Username">
+        <input id="password" type="password" placeholder="Password">
+        <button onclick="login()">Login / Register</button>
+    </div>
+</div>
 
 <div id="desktop">
-    <div class="icon" onclick="openFileManager()">📂 File Manager</div>
-    <div class="icon" onclick="openTerminalApp()">💻 Terminal</div>
-    <div id="taskbar">WebOS Desktop</div>
+    <div id="topbar">
+        <div>WebNAS OS</div>
+        <div id="monitor"></div>
+    </div>
+
+    <div id="sidebar">
+        <div class="appBtn" onclick="openFileManager()">📂 File Manager</div>
+        <div class="appBtn" onclick="openTerminal()">💻 Terminal</div>
+        <div class="appBtn" onclick="openMonitor()">📊 System Monitor</div>
+    </div>
 </div>
 
 <script>
 
 /* USER SYSTEM */
 
-let users = JSON.parse(localStorage.getItem("webos_users")) || {};
-let currentUser = null;
-let fs = null;
-let path = ["home"];
-
-const terminal = document.getElementById("terminalScreen");
+let users = JSON.parse(localStorage.getItem("nas_users")) || {};
+let currentUser=null;
+let fs=null;
+let path=["home"];
 
 function saveUsers(){
-    localStorage.setItem("webos_users",JSON.stringify(users));
+    localStorage.setItem("nas_users",JSON.stringify(users));
 }
 
-/* LOGIN */
+function login(){
+    const u=document.getElementById("username").value;
+    const p=document.getElementById("password").value;
 
-function boot(){
-    terminal.innerHTML="WebOS v1.0\nlogin: ";
-    const input=document.createElement("input");
-    terminal.appendChild(input);
-    input.focus();
-
-    input.addEventListener("keydown",e=>{
-        if(e.key==="Enter"){
-            const username=input.value.trim();
-            if(!users[username]){
-                users[username]={fs:{home:{}},password:null};
-                saveUsers();
-            }
-            currentUser=username;
-            fs=users[username].fs;
-            terminal.innerHTML+="\nWelcome "+username+"\n";
-            prompt();
-        }
-    });
-}
-
-/* TERMINAL */
-
-function prompt(){
-    terminal.innerHTML+=`\n${currentUser}@webos:/${path.join("/")}$ `;
-    const input=document.createElement("input");
-    terminal.appendChild(input);
-    input.focus();
-
-    input.addEventListener("keydown",e=>{
-        if(e.key==="Enter"){
-            const cmd=input.value;
-            terminal.innerHTML+=cmd;
-            input.remove();
-            execute(cmd);
-            prompt();
-        }
-    });
-
-    terminal.scrollTop=terminal.scrollHeight;
-}
-
-function getDir(){
-    let dir=fs;
-    path.forEach(p=>dir=dir[p]);
-    return dir;
-}
-
-function execute(cmd){
-    const [c,...args]=cmd.split(" ");
-
-    if(cmd==="sudo start gui"){
-        startGUI();
-        return;
+    if(!users[u]){
+        users[u]={password:p,fs:{home:{}}};
+        saveUsers();
     }
 
-    switch(c){
-        case "ls":
-            terminal.innerHTML+="\n"+Object.keys(getDir()).join(" ");
-            break;
-        case "mkdir":
-            getDir()[args[0]]={};
-            saveUsers();
-            break;
-        case "touch":
-            getDir()[args[0]]="";
-            saveUsers();
-            break;
-        case "cd":
-            if(args[0]==="..") path.pop();
-            else if(getDir()[args[0]]) path.push(args[0]);
-            break;
-        case "pwd":
-            terminal.innerHTML+="\n/"+path.join("/");
-            break;
-        case "clear":
-            terminal.innerHTML="";
-            break;
-        default:
-            terminal.innerHTML+="\nCommand not found";
+    if(users[u].password===p){
+        currentUser=u;
+        fs=users[u].fs;
+        document.getElementById("loginScreen").style.display="none";
+        document.getElementById("desktop").style.display="block";
+        startMonitor();
+    } else {
+        alert("Wrong password");
     }
 }
 
-/* GUI */
+/* WINDOW SYSTEM */
 
-function startGUI(){
-    document.getElementById("terminalScreen").style.display="none";
-    document.getElementById("desktop").style.display="block";
-}
-
-function createWindow(title,contentHTML){
+function createWindow(title,content){
     const win=document.createElement("div");
     win.className="window";
     win.style.top="100px";
-    win.style.left="200px";
+    win.style.left="250px";
 
     win.innerHTML=`
-        <div class="window-header">${title}</div>
-        <div class="window-content">${contentHTML}</div>
+    <div class="window-header">
+        <span>${title}</span>
+        <button onclick="this.closest('.window').remove()">X</button>
+    </div>
+    <div class="window-content">${content}</div>
     `;
 
     document.getElementById("desktop").appendChild(win);
@@ -234,7 +204,7 @@ function createWindow(title,contentHTML){
 
 function drag(el){
     const header=el.querySelector(".window-header");
-    let offsetX,offsetY,isDown=false;
+    let isDown=false,offsetX,offsetY;
 
     header.onmousedown=e=>{
         isDown=true;
@@ -252,21 +222,95 @@ function drag(el){
     };
 }
 
+/* FILE SYSTEM */
+
+function getDir(){
+    let dir=fs;
+    path.forEach(p=>dir=dir[p]);
+    return dir;
+}
+
+/* FILE MANAGER */
+
 function openFileManager(){
     let html="<h3>Files</h3>";
     Object.keys(getDir()).forEach(name=>{
         html+=`<div>${name}</div>`;
     });
+    html+=`<button onclick="createFile()">New File</button>`;
     createWindow("File Manager",html);
 }
 
-function openTerminalApp(){
-    createWindow("Terminal","<div>Use main terminal for commands</div>");
+function createFile(){
+    const name=prompt("File name:");
+    if(!name) return;
+    getDir()[name]="";
+    saveUsers();
 }
 
-boot();
+/* TERMINAL */
+
+function openTerminal(){
+    createWindow("Terminal",`
+        <div id="termOutput"></div>
+        <input id="termInput" style="width:100%;background:black;color:#0f0;">
+    `);
+
+    const input=document.getElementById("termInput");
+    const output=document.getElementById("termOutput");
+
+    input.addEventListener("keydown",e=>{
+        if(e.key==="Enter"){
+            const cmd=input.value;
+            output.innerHTML+="<div>> "+cmd+"</div>";
+            executeTerminal(cmd,output);
+            input.value="";
+        }
+    });
+}
+
+function executeTerminal(cmd,out){
+    const [c,arg]=cmd.split(" ");
+
+    switch(c){
+        case "ls":
+            out.innerHTML+="<div>"+Object.keys(getDir()).join(" ")+"</div>";
+            break;
+        case "mkdir":
+            getDir()[arg]={};
+            saveUsers();
+            break;
+        case "touch":
+            getDir()[arg]="";
+            saveUsers();
+            break;
+        case "pwd":
+            out.innerHTML+="<div>/"+path.join("/")+"</div>";
+            break;
+        case "clear":
+            out.innerHTML="";
+            break;
+        default:
+            out.innerHTML+="<div>Command not found</div>";
+    }
+}
+
+/* SYSTEM MONITOR */
+
+function openMonitor(){
+    createWindow("System Monitor",`
+        <div id="cpu">CPU: 0%</div>
+        <div id="ram">RAM: 0%</div>
+    `);
+}
+
+function startMonitor(){
+    setInterval(()=>{
+        document.getElementById("monitor").innerText=
+        "CPU "+Math.floor(Math.random()*60)+"% | RAM "+Math.floor(Math.random()*80)+"%";
+    },2000);
+}
 
 </script>
-
 </body>
 </html>
