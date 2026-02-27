@@ -13,16 +13,17 @@ body{height:100vh;overflow:hidden;background:linear-gradient(135deg,#0f172a,#1e2
 .appBtn{padding:12px;margin:10px 0;border-radius:12px;cursor:pointer;background:rgba(255,255,255,0.08);transition:.2s;}
 .appBtn:hover{background:rgba(255,255,255,0.15);}
 #workspace{position:absolute;top:50px;left:220px;right:0;bottom:0;overflow:hidden;}
-.window{position:absolute;width:800px;height:500px;border-radius:18px;backdrop-filter:blur(30px);background:rgba(255,255,255,0.08);box-shadow:0 0 50px rgba(0,0,0,0.5);overflow:hidden;display:flex;flex-direction:column;}
+.window{position:absolute;width:850px;height:500px;border-radius:18px;backdrop-filter:blur(30px);background:rgba(255,255,255,0.08);box-shadow:0 0 50px rgba(0,0,0,0.5);overflow:hidden;display:flex;flex-direction:column;}
 .window-header{height:45px;display:flex;justify-content:space-between;align-items:center;padding:0 15px;background:rgba(255,255,255,0.1);cursor:move;}
 .window-controls button{width:22px;height:22px;margin-left:8px;border:none;border-radius:50%;cursor:pointer;}
 .close{background:#ef4444}.min{background:#f59e0b}.max{background:#10b981;}
-.window-content{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:row;}
+.window-content{flex:1;overflow:auto;display:flex;flex-direction:row;}
 #fileTree{width:200px;background:rgba(255,255,255,0.05);padding:10px;border-right:1px solid rgba(255,255,255,0.1);overflow:auto;}
 #fileList{flex:1;padding:10px;overflow:auto;}
-.file-item{padding:5px;cursor:pointer;border-radius:8px;}
+.file-item{padding:5px;cursor:pointer;border-radius:8px;display:flex;align-items:center;}
 .file-item:hover{background:rgba(255,255,255,0.1);}
 .file-item.selected{background:rgba(37,99,235,0.4);}
+.file-icon{margin-right:8px;}
 #previewPanel{width:250px;padding:10px;background:rgba(255,255,255,0.05);border-left:1px solid rgba(255,255,255,0.1);overflow:auto;}
 button{margin:0 5px 5px 0;padding:5px;border-radius:6px;background:rgba(255,255,255,0.1);border:none;color:#fff;cursor:pointer;}
 button:hover{background:rgba(255,255,255,0.2);}
@@ -31,11 +32,10 @@ input[type="file"]{display:none;}
 </head>
 <body>
 <div id="desktop">
-    <div id="topbar"><div>MORNAS OS NAS Ultimate</div><div id="status"></div></div>
+    <div id="topbar"><div>MORNAS OS NAS Ultimate</div></div>
     <div id="sidebar">
         <div class="appBtn" onclick="openApp('fileManager')">📂 File Manager</div>
         <div class="appBtn" onclick="openApp('terminal')">💻 Terminal</div>
-        <div class="appBtn" onclick="openApp('monitor')">📊 System Monitor</div>
     </div>
     <div id="workspace"></div>
 </div>
@@ -78,27 +78,19 @@ function attachControls(win){
 function openApp(type){
     if(type==="fileManager"){createWindow("File Manager","<div id='fileManagerRoot' style='display:flex;flex:1;'></div>"); buildFileManager();}
     if(type==="terminal"){createWindow("Terminal","<div id='terminalRoot'></div>"); buildTerminal();}
-    if(type==="monitor"){createWindow("System Monitor","<div id='monitorRoot'></div>"); buildMonitor();}
 }
 
 /* ============================
-   STATUS MONITOR
-============================ */
-function startStatusMonitor(){
-    setInterval(()=>{status.innerText="CPU "+Math.floor(Math.random()*60)+"% | RAM "+Math.floor(Math.random()*80)+"% | Items: "+Object.keys(getCurrentDir()).length;},2000);
-}
-
-/* ============================
-   FILE MANAGER FUNCTIONS
+   FILE MANAGER
 ============================ */
 function getCurrentDir(){
     let dir = fs; path.forEach(p=>{dir=dir[p].children||dir[p];});
     return dir;
 }
 function pathString(){return "/"+path.slice(1).join("/");}
+
 function buildFileManager(){
-    const root=document.getElementById("fileManagerRoot"); root.innerHTML="";
-    root.style.display="flex";
+    const root=document.getElementById("fileManagerRoot"); root.innerHTML=""; root.style.display="flex";
 
     const treeDiv=document.createElement("div"); treeDiv.id="fileTree"; root.appendChild(treeDiv);
     const listDiv=document.createElement("div"); listDiv.id="fileList"; root.appendChild(listDiv);
@@ -106,7 +98,7 @@ function buildFileManager(){
 
     // Toolbar
     const toolbar=document.createElement("div"); toolbar.style.marginBottom="10px"; listDiv.appendChild(toolbar);
-    ["New Folder","New File","Upload","Download","Delete"].forEach(action=>{
+    ["New Folder","New File","Upload","Download","Delete","Rename","Search"].forEach(action=>{
         const btn=document.createElement("button"); btn.textContent=action; toolbar.appendChild(btn);
         btn.onclick=()=>fileManagerAction(action);
     });
@@ -114,19 +106,24 @@ function buildFileManager(){
     buildTree(treeDiv,fs.root,0);
     buildList();
 }
+
 function buildTree(container,node,level){
-    const div=document.createElement("div"); div.textContent=node.type==="folder"?nodeLabel(node):""; div.style.marginLeft=(level*10)+"px";
+    const div=document.createElement("div"); div.style.marginLeft=(level*12)+"px";
+    div.textContent=node.type==="folder"?Object.keys(node.children||{}).length+" items":"";
     container.appendChild(div);
     if(node.children) for(const k in node.children) buildTree(container,node.children[k],level+1);
 }
-function nodeLabel(node){return Object.keys(node.children||{}).length+" items";}
+
 function buildList(){
     const listDiv=document.getElementById("fileList");
-    // Clear old items
     [...listDiv.querySelectorAll(".file-item")].forEach(el=>el.remove());
     const dir=getCurrentDir();
     for(const name in dir){
-        const item=document.createElement("div"); item.className="file-item"; item.textContent=name;
+        const item=document.createElement("div"); item.className="file-item";
+        const icon=document.createElement("span"); icon.className="file-icon";
+        icon.textContent=dir[name].type==="folder"?"📂":(dir[name].type==="file"&&dir[name].content&&dir[name].content.startsWith("data:image")?"🖼️":"📄");
+        item.appendChild(icon); item.appendChild(document.createTextNode(name));
+
         if(selectedFiles.has(name)) item.classList.add("selected");
         item.onclick=e=>{
             if(e.ctrlKey) {selectedFiles.has(name)?selectedFiles.delete(name):selectedFiles.add(name);} 
@@ -138,6 +135,7 @@ function buildList(){
     }
     buildPreview();
 }
+
 function buildPreview(){
     const preview=document.getElementById("previewPanel"); preview.innerHTML="";
     const dir=getCurrentDir();
@@ -149,6 +147,7 @@ function buildPreview(){
         }
     });
 }
+
 function fileManagerAction(action){
     const dir=getCurrentDir();
     if(action==="New Folder"){const n=prompt("Folder name"); if(n) dir[n]={type:"folder",children:{}};}
@@ -156,6 +155,8 @@ function fileManagerAction(action){
     if(action==="Upload"){const inp=document.createElement("input"); inp.type="file"; inp.onchange=e=>{const f=e.target.files[0]; const reader=new FileReader(); reader.onload=r=>{dir[f.name]={type:"file",content:r.target.result,size:f.size}; buildFileManager();}; reader.readAsDataURL(f);}; inp.click();}
     if(action==="Download"){selectedFiles.forEach(name=>{const f=dir[name]; if(f.type==="file"&&f.content){const a=document.createElement("a"); a.href=f.content; a.download=name; a.click();}});}
     if(action==="Delete"){selectedFiles.forEach(name=>{delete dir[name];}); selectedFiles.clear();}
+    if(action==="Rename"){selectedFiles.forEach(name=>{const newName=prompt("Rename "+name,name); if(newName) {dir[newName]=dir[name]; delete dir[name];}}); selectedFiles.clear();}
+    if(action==="Search"){const term=prompt("Search term"); if(term){alert("Found: "+Object.keys(dir).filter(n=>n.includes(term)).join(", "));}}
     buildList();
 }
 
@@ -168,6 +169,7 @@ function buildTerminal(){
     const input=document.createElement("input"); input.style.width="100%"; input.style.background="black"; input.style.color="#0f0"; container.appendChild(input); input.focus();
     input.addEventListener("keydown",e=>{if(e.key==="Enter"){const cmd=input.value.trim(); output.innerHTML+="<div>> "+cmd+"</div>"; executeTerm(cmd,output); input.value=""; output.scrollTop=output.scrollHeight;}});
 }
+
 function executeTerm(cmd,out){
     const args=cmd.split(" "); const c=args[0]; const arg=args[1]; const dir=getCurrentDir();
     switch(c){
@@ -176,29 +178,17 @@ function executeTerm(cmd,out){
         case "pwd": out.innerHTML+="<div>"+pathString()+"</div>"; break;
         case "mkdir": if(arg) dir[arg]={type:"folder",children:{}}; break;
         case "touch": if(arg) dir[arg]={type:"file",content:"",size:0}; break;
+        case "rm": if(arg) delete dir[arg]; break;
         case "cat": if(arg&&dir[arg]&&dir[arg].type==="file") out.innerHTML+="<pre style='white-space:pre-wrap'>"+dir[arg].content+"</pre>"; break;
         case "clear": out.innerHTML=""; break;
-        case "help": out.innerHTML+="<div>Commands: ls, cd, pwd, mkdir, touch, cat, clear, help</div>"; break;
+        case "help": out.innerHTML+="<div>Commands: ls, cd, pwd, mkdir, touch, rm, cat, clear, help</div>"; break;
         default: out.innerHTML+="<div>Command not found</div>";
     }
 }
 
 /* ============================
-   SYSTEM MONITOR
-============================ */
-function buildMonitor(){
-    const container=document.getElementById("monitorRoot"); container.innerHTML="";
-    const cpu=document.createElement("div"); const ram=document.createElement("div"); const storage=document.createElement("div");
-    container.appendChild(cpu); container.appendChild(ram); container.appendChild(storage);
-    setInterval(()=>{cpu.textContent="CPU Usage: "+Math.floor(Math.random()*70)+"%";
-                     ram.textContent="RAM Usage: "+Math.floor(Math.random()*80)+"%";
-                     storage.textContent="Storage items: "+Object.keys(getCurrentDir()).length;},1500);
-}
-
-/* ============================
    INIT
 ============================ */
-startStatusMonitor();
 </script>
 </body>
 </html>
