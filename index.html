@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Advanced Web File Manager</title>
+
+<style>
+* { box-sizing: border-box; margin:0; padding:0; font-family:Segoe UI, sans-serif; }
+
+body {
+    display:flex;
+    height:100vh;
+    background:#1e1e1e;
+    color:#eee;
+    transition:0.3s;
+}
+
+.light {
+    background:#f4f4f4;
+    color:#222;
+}
+
+.sidebar {
+    width:300px;
+    background:#252526;
+    padding:15px;
+    overflow-y:auto;
+    border-right:1px solid #333;
+}
+
+.light .sidebar { background:#fff; }
+
+.editor {
+    flex:1;
+    display:flex;
+    flex-direction:column;
+}
+
+.toolbar {
+    padding:10px;
+    background:#333;
+    display:flex;
+    gap:10px;
+}
+
+.light .toolbar { background:#ddd; }
+
+button {
+    padding:6px 12px;
+    border:none;
+    background:#007acc;
+    color:white;
+    cursor:pointer;
+    border-radius:4px;
+}
+
+button:hover { opacity:0.8; }
+
+input {
+    padding:5px;
+    width:100%;
+    margin-bottom:8px;
+}
+
+.file {
+    padding:6px;
+    cursor:pointer;
+    border-radius:4px;
+}
+
+.file:hover {
+    background:#007acc;
+}
+
+textarea {
+    flex:1;
+    resize:none;
+    padding:15px;
+    border:none;
+    outline:none;
+    font-family:monospace;
+    font-size:14px;
+    background:#1e1e1e;
+    color:#eee;
+}
+
+.light textarea {
+    background:#fff;
+    color:#000;
+}
+
+.folder {
+    font-weight:bold;
+    margin-top:8px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+    <input type="text" id="search" placeholder="Keresés...">
+    <button onclick="newFolder()">Új mappa</button>
+    <button onclick="newFile()">Új fájl</button>
+    <button onclick="exportFiles()">Export JSON</button>
+    <button onclick="importFiles()">Import JSON</button>
+    <button onclick="toggleTheme()">Téma váltás</button>
+    <hr>
+    <div id="fileTree"></div>
+</div>
+
+<div class="editor">
+    <div class="toolbar">
+        <span id="currentFile">Nincs megnyitva</span>
+        <button onclick="saveFile()">Mentés</button>
+        <button onclick="deleteFile()">Törlés</button>
+    </div>
+    <textarea id="editor" placeholder="Itt szerkesztheted a fájlt..."></textarea>
+</div>
+
+<script>
+
+let fileSystem = JSON.parse(localStorage.getItem("fileSystem")) || {};
+let currentPath = null;
+
+function saveStorage() {
+    localStorage.setItem("fileSystem", JSON.stringify(fileSystem));
+}
+
+function renderTree(filter="") {
+    const tree = document.getElementById("fileTree");
+    tree.innerHTML = "";
+    Object.keys(fileSystem).forEach(name=>{
+        if(name.toLowerCase().includes(filter.toLowerCase())){
+            const div = document.createElement("div");
+            div.className = "file";
+            div.textContent = name;
+            div.onclick = ()=>openFile(name);
+            div.draggable = true;
+            div.ondragstart = e=>e.dataTransfer.setData("text", name);
+            tree.appendChild(div);
+        }
+    });
+}
+
+function newFile() {
+    const name = prompt("Fájlnév:");
+    if(!name) return;
+    fileSystem[name] = "";
+    saveStorage();
+    renderTree();
+}
+
+function newFolder() {
+    alert("Ez a verzió mappa-szimuláció nélküli flat rendszer.");
+}
+
+function openFile(name) {
+    currentPath = name;
+    document.getElementById("editor").value = fileSystem[name];
+    document.getElementById("currentFile").textContent = name;
+}
+
+function saveFile() {
+    if(!currentPath) return;
+    fileSystem[currentPath] = document.getElementById("editor").value;
+    saveStorage();
+    alert("Mentve!");
+}
+
+function deleteFile() {
+    if(!currentPath) return;
+    if(confirm("Biztos törlöd?")){
+        delete fileSystem[currentPath];
+        currentPath=null;
+        document.getElementById("editor").value="";
+        document.getElementById("currentFile").textContent="Nincs megnyitva";
+        saveStorage();
+        renderTree();
+    }
+}
+
+function exportFiles() {
+    const data = JSON.stringify(fileSystem);
+    const blob = new Blob([data], {type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "files.json";
+    a.click();
+}
+
+function importFiles() {
+    const input = document.createElement("input");
+    input.type="file";
+    input.accept=".json";
+    input.onchange = e=>{
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = ()=>{
+            fileSystem = JSON.parse(reader.result);
+            saveStorage();
+            renderTree();
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+}
+
+function toggleTheme() {
+    document.body.classList.toggle("light");
+}
+
+document.getElementById("search").addEventListener("input", e=>{
+    renderTree(e.target.value);
+});
+
+renderTree();
+
+</script>
+
+</body>
+</html>
