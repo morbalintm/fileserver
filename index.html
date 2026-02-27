@@ -2,302 +2,271 @@
 <html lang="hu">
 <head>
 <meta charset="UTF-8">
-<title>Web OS</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WebOS</title>
 
 <style>
-*{box-sizing:border-box;margin:0;padding:0;font-family:Segoe UI,sans-serif}
+*{margin:0;padding:0;box-sizing:border-box;font-family:Segoe UI,sans-serif}
 
 body{
+    background:linear-gradient(135deg,#0f2027,#203a43,#2c5364);
     height:100vh;
-    background:#0f0f0f;
+    overflow:hidden;
     color:white;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-}
-
-/* START SCREEN */
-
-#startScreen{
-    text-align:center;
-}
-
-.startBtn{
-    display:block;
-    margin:20px auto;
-    padding:15px 40px;
-    font-size:18px;
-    border:none;
-    border-radius:10px;
-    cursor:pointer;
-    background:#1f1f1f;
-    color:#0f0;
-    border:1px solid #0f0;
-    transition:0.3s;
-}
-
-.startBtn:hover{
-    background:#0f0;
-    color:#000;
 }
 
 /* TERMINAL */
 
-#terminalMode{
-    display:none;
+#terminalScreen{
     width:100%;
     height:100%;
-    padding:20px;
-    background:#000;
-    color:#0f0;
+    background:black;
+    color:#00ff88;
     font-family:monospace;
+    padding:20px;
     overflow:auto;
 }
 
 input{
     background:transparent;
     border:none;
-    color:#0f0;
-    outline:none;
+    color:#00ff88;
     font-family:monospace;
+    outline:none;
 }
 
-/* UI MODE */
+/* DESKTOP */
 
-#uiMode{
+#desktop{
     display:none;
     width:100%;
     height:100%;
-    display:flex;
+    position:relative;
+    backdrop-filter:blur(25px);
 }
 
-.sidebar{
-    width:250px;
-    background:#1c1c1c;
-    padding:15px;
-    overflow-y:auto;
+/* TASKBAR */
+
+#taskbar{
+    position:absolute;
+    bottom:0;
+    width:100%;
+    height:50px;
+    background:rgba(255,255,255,0.1);
+    backdrop-filter:blur(20px);
+    display:flex;
+    align-items:center;
+    padding:0 15px;
 }
 
-.editor{
-    flex:1;
-    display:flex;
-    flex-direction:column;
+/* WINDOW */
+
+.window{
+    position:absolute;
+    width:500px;
+    height:350px;
+    background:rgba(255,255,255,0.15);
+    backdrop-filter:blur(20px);
+    border-radius:15px;
+    box-shadow:0 0 30px rgba(0,0,0,0.4);
+    overflow:hidden;
+}
+
+.window-header{
+    background:rgba(255,255,255,0.1);
+    padding:8px;
+    cursor:move;
+    font-weight:bold;
+}
+
+.window-content{
+    padding:10px;
+    height:calc(100% - 35px);
+    overflow:auto;
+}
+
+.icon{
+    margin:20px;
+    cursor:pointer;
 }
 
 textarea{
-    flex:1;
-    background:#111;
-    color:white;
+    width:100%;
+    height:100%;
+    background:transparent;
     border:none;
-    padding:15px;
-    resize:none;
+    color:white;
     outline:none;
-}
-
-button{
-    margin:5px 0;
-    padding:6px;
-    border:none;
-    cursor:pointer;
-    background:#333;
-    color:white;
-}
-
-.file{
-    padding:5px;
-    cursor:pointer;
-}
-
-.file:hover{
-    background:#333;
 }
 </style>
 </head>
-
 <body>
 
-<div id="startScreen">
-    <h1>Web OS</h1>
-    <button class="startBtn" onclick="startTerminal()">Linux Terminal</button>
-    <button class="startBtn" onclick="startUI()">Grafikus UI</button>
-</div>
+<div id="terminalScreen"></div>
 
-<div id="terminalMode"></div>
-
-<div id="uiMode">
-    <div class="sidebar">
-        <button onclick="newFile()">Új fájl</button>
-        <button onclick="newFolder()">Új mappa</button>
-        <button onclick="deleteFile()">Törlés</button>
-        <input type="text" id="search" placeholder="Keresés">
-        <div id="fileList"></div>
-    </div>
-    <div class="editor">
-        <textarea id="editor"></textarea>
-        <button onclick="saveFile()">Mentés</button>
-    </div>
+<div id="desktop">
+    <div class="icon" onclick="openFileManager()">📂 File Manager</div>
+    <div class="icon" onclick="openTerminalApp()">💻 Terminal</div>
+    <div id="taskbar">WebOS Desktop</div>
 </div>
 
 <script>
 
-/* VIRTUAL FILE SYSTEM */
+/* USER SYSTEM */
 
-let fs = JSON.parse(localStorage.getItem("webos")) || {
-    home:{}
-};
+let users = JSON.parse(localStorage.getItem("webos_users")) || {};
+let currentUser = null;
+let fs = null;
+let path = ["home"];
 
-let currentPath=["home"];
-let currentFile=null;
+const terminal = document.getElementById("terminalScreen");
 
-/* START MODES */
-
-function startTerminal(){
-    document.getElementById("startScreen").style.display="none";
-    const term=document.getElementById("terminalMode");
-    term.style.display="block";
-    initTerminal();
+function saveUsers(){
+    localStorage.setItem("webos_users",JSON.stringify(users));
 }
 
-function startUI(){
-    document.getElementById("startScreen").style.display="none";
-    document.getElementById("uiMode").style.display="flex";
-    renderFiles();
-}
+/* LOGIN */
 
-/* TERMINAL */
-
-function initTerminal(){
-    const term=document.getElementById("terminalMode");
-    term.innerHTML="Web Linux Terminal\nType help\n";
-    prompt();
-}
-
-function prompt(){
-    const term=document.getElementById("terminalMode");
-    term.innerHTML+=`\nuser@web:/${currentPath.join("/")}$ `;
+function boot(){
+    terminal.innerHTML="WebOS v1.0\nlogin: ";
     const input=document.createElement("input");
-    term.appendChild(input);
+    terminal.appendChild(input);
     input.focus();
 
     input.addEventListener("keydown",e=>{
         if(e.key==="Enter"){
-            const val=input.value;
-            term.innerHTML+=val;
+            const username=input.value.trim();
+            if(!users[username]){
+                users[username]={fs:{home:{}},password:null};
+                saveUsers();
+            }
+            currentUser=username;
+            fs=users[username].fs;
+            terminal.innerHTML+="\nWelcome "+username+"\n";
+            prompt();
+        }
+    });
+}
+
+/* TERMINAL */
+
+function prompt(){
+    terminal.innerHTML+=`\n${currentUser}@webos:/${path.join("/")}$ `;
+    const input=document.createElement("input");
+    terminal.appendChild(input);
+    input.focus();
+
+    input.addEventListener("keydown",e=>{
+        if(e.key==="Enter"){
+            const cmd=input.value;
+            terminal.innerHTML+=cmd;
             input.remove();
-            exec(val);
+            execute(cmd);
             prompt();
         }
     });
 
-    term.scrollTop=term.scrollHeight;
+    terminal.scrollTop=terminal.scrollHeight;
 }
 
 function getDir(){
     let dir=fs;
-    currentPath.forEach(p=>dir=dir[p]);
+    path.forEach(p=>dir=dir[p]);
     return dir;
 }
 
-function exec(cmd){
-    const term=document.getElementById("terminalMode");
-    const [c,arg]=cmd.split(" ");
+function execute(cmd){
+    const [c,...args]=cmd.split(" ");
+
+    if(cmd==="sudo start gui"){
+        startGUI();
+        return;
+    }
 
     switch(c){
         case "ls":
-            term.innerHTML+="\n"+Object.keys(getDir()).join(" ");
-            break;
-        case "pwd":
-            term.innerHTML+="\n/"+currentPath.join("/");
+            terminal.innerHTML+="\n"+Object.keys(getDir()).join(" ");
             break;
         case "mkdir":
-            getDir()[arg]={};
-            save();
+            getDir()[args[0]]={};
+            saveUsers();
             break;
         case "touch":
-            getDir()[arg]="";
-            save();
+            getDir()[args[0]]="";
+            saveUsers();
             break;
         case "cd":
-            if(arg==="..") currentPath.pop();
-            else if(getDir()[arg]) currentPath.push(arg);
+            if(args[0]==="..") path.pop();
+            else if(getDir()[args[0]]) path.push(args[0]);
             break;
-        case "cat":
-            term.innerHTML+="\n"+getDir()[arg];
-            break;
-        case "rm":
-            delete getDir()[arg];
-            save();
+        case "pwd":
+            terminal.innerHTML+="\n/"+path.join("/");
             break;
         case "clear":
-            term.innerHTML="";
-            break;
-        case "help":
-            term.innerHTML+=`\nls cd pwd mkdir touch rm cat clear help`;
+            terminal.innerHTML="";
             break;
         default:
-            term.innerHTML+="\nCommand not found";
+            terminal.innerHTML+="\nCommand not found";
     }
 }
 
-/* UI MODE */
+/* GUI */
 
-function renderFiles(){
-    const list=document.getElementById("fileList");
-    list.innerHTML="";
+function startGUI(){
+    document.getElementById("terminalScreen").style.display="none";
+    document.getElementById("desktop").style.display="block";
+}
+
+function createWindow(title,contentHTML){
+    const win=document.createElement("div");
+    win.className="window";
+    win.style.top="100px";
+    win.style.left="200px";
+
+    win.innerHTML=`
+        <div class="window-header">${title}</div>
+        <div class="window-content">${contentHTML}</div>
+    `;
+
+    document.getElementById("desktop").appendChild(win);
+    drag(win);
+}
+
+function drag(el){
+    const header=el.querySelector(".window-header");
+    let offsetX,offsetY,isDown=false;
+
+    header.onmousedown=e=>{
+        isDown=true;
+        offsetX=e.clientX-el.offsetLeft;
+        offsetY=e.clientY-el.offsetTop;
+    };
+
+    document.onmouseup=()=>isDown=false;
+
+    document.onmousemove=e=>{
+        if(isDown){
+            el.style.left=e.clientX-offsetX+"px";
+            el.style.top=e.clientY-offsetY+"px";
+        }
+    };
+}
+
+function openFileManager(){
+    let html="<h3>Files</h3>";
     Object.keys(getDir()).forEach(name=>{
-        const div=document.createElement("div");
-        div.className="file";
-        div.textContent=name;
-        div.onclick=()=>openFile(name);
-        list.appendChild(div);
+        html+=`<div>${name}</div>`;
     });
+    createWindow("File Manager",html);
 }
 
-function newFile(){
-    const name=prompt("Fájlnév:");
-    if(!name) return;
-    getDir()[name]="";
-    save();
-    renderFiles();
+function openTerminalApp(){
+    createWindow("Terminal","<div>Use main terminal for commands</div>");
 }
 
-function newFolder(){
-    const name=prompt("Mappanév:");
-    if(!name) return;
-    getDir()[name]={};
-    save();
-    renderFiles();
-}
-
-function openFile(name){
-    currentFile=name;
-    if(typeof getDir()[name]==="string"){
-        document.getElementById("editor").value=getDir()[name];
-    }
-}
-
-function saveFile(){
-    if(currentFile){
-        getDir()[currentFile]=document.getElementById("editor").value;
-        save();
-    }
-}
-
-function deleteFile(){
-    if(currentFile){
-        delete getDir()[currentFile];
-        document.getElementById("editor").value="";
-        currentFile=null;
-        save();
-        renderFiles();
-    }
-}
-
-function save(){
-    localStorage.setItem("webos",JSON.stringify(fs));
-}
+boot();
 
 </script>
+
 </body>
 </html>
