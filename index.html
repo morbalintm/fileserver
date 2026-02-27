@@ -5,74 +5,52 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MORNAS OS Ultimate NAS</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:Inter,Segoe UI,sans-serif}
+*{margin:0;padding:0;box-sizing:border-box;font-family:Inter,Segoe UI,sans-serif;}
 body{height:100vh;overflow:hidden;background:linear-gradient(135deg,#0f172a,#1e293b,#0f172a);color:#fff;}
-#loginScreen{position:absolute;inset:0;display:flex;justify-content:center;align-items:center;background:radial-gradient(circle at top,#1e293b,#0f172a);}
-.loginBox{width:350px;padding:40px;border-radius:20px;backdrop-filter:blur(30px);background:rgba(255,255,255,0.08);box-shadow:0 0 40px rgba(0,0,0,0.6);}
-.loginBox h2{text-align:center;margin-bottom:20px;}
-.loginBox input{width:100%;margin:10px 0;padding:10px;border-radius:10px;border:none;background:rgba(255,255,255,0.1);color:#fff;}
-.loginBox button{width:100%;padding:10px;margin-top:10px;border:none;border-radius:10px;background:#2563eb;color:#fff;cursor:pointer;}
-#desktop{display:none;position:absolute;inset:0;}
+#desktop{position:absolute;inset:0;}
 #topbar{height:50px;display:flex;justify-content:space-between;align-items:center;padding:0 20px;background:rgba(255,255,255,0.08);backdrop-filter:blur(25px);border-bottom:1px solid rgba(255,255,255,0.1);}
 #sidebar{position:absolute;top:50px;bottom:0;left:0;width:220px;padding:15px;backdrop-filter:blur(25px);background:rgba(255,255,255,0.05);border-right:1px solid rgba(255,255,255,0.1);}
 .appBtn{padding:12px;margin:10px 0;border-radius:12px;cursor:pointer;background:rgba(255,255,255,0.08);transition:.2s;}
 .appBtn:hover{background:rgba(255,255,255,0.15);}
 #workspace{position:absolute;top:50px;left:220px;right:0;bottom:0;overflow:hidden;}
-.window{position:absolute;width:750px;height:500px;border-radius:18px;backdrop-filter:blur(30px);background:rgba(255,255,255,0.08);box-shadow:0 0 50px rgba(0,0,0,0.5);overflow:hidden;display:flex;flex-direction:column;}
+.window{position:absolute;width:800px;height:500px;border-radius:18px;backdrop-filter:blur(30px);background:rgba(255,255,255,0.08);box-shadow:0 0 50px rgba(0,0,0,0.5);overflow:hidden;display:flex;flex-direction:column;}
 .window-header{height:45px;display:flex;justify-content:space-between;align-items:center;padding:0 15px;background:rgba(255,255,255,0.1);cursor:move;}
 .window-controls button{width:22px;height:22px;margin-left:8px;border:none;border-radius:50%;cursor:pointer;}
 .close{background:#ef4444}.min{background:#f59e0b}.max{background:#10b981;}
-.window-content{flex:1;overflow:auto;padding:15px;}
-.fm-item{padding:5px;cursor:pointer;}
-.fm-item:hover{background:rgba(255,255,255,0.1);}
-button{margin:0 5px 5px 0;}
+.window-content{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:row;}
+#fileTree{width:200px;background:rgba(255,255,255,0.05);padding:10px;border-right:1px solid rgba(255,255,255,0.1);overflow:auto;}
+#fileList{flex:1;padding:10px;overflow:auto;}
+.file-item{padding:5px;cursor:pointer;border-radius:8px;}
+.file-item:hover{background:rgba(255,255,255,0.1);}
+.file-item.selected{background:rgba(37,99,235,0.4);}
+#previewPanel{width:250px;padding:10px;background:rgba(255,255,255,0.05);border-left:1px solid rgba(255,255,255,0.1);overflow:auto;}
+button{margin:0 5px 5px 0;padding:5px;border-radius:6px;background:rgba(255,255,255,0.1);border:none;color:#fff;cursor:pointer;}
+button:hover{background:rgba(255,255,255,0.2);}
+input[type="file"]{display:none;}
 </style>
 </head>
 <body>
-
-<div id="loginScreen">
-    <div class="loginBox">
-        <h2>MORNAS OS NAS Ultimate</h2>
-        <input id="username" placeholder="Username">
-        <input id="password" type="password" placeholder="Password">
-        <button onclick="auth()">Login / Register</button>
-    </div>
-</div>
-
 <div id="desktop">
-    <div id="topbar">
-        <div>MORNAS OS NAS Ultimate</div>
-        <div id="status"></div>
-    </div>
+    <div id="topbar"><div>MORNAS OS NAS Ultimate</div><div id="status"></div></div>
     <div id="sidebar">
         <div class="appBtn" onclick="openApp('fileManager')">📂 File Manager</div>
         <div class="appBtn" onclick="openApp('terminal')">💻 Terminal</div>
         <div class="appBtn" onclick="openApp('monitor')">📊 System Monitor</div>
-        <div class="appBtn" onclick="openApp('textEditor')">📝 Text Editor</div>
-        <div class="appBtn" onclick="openApp('imageViewer')">🖼️ Image Viewer</div>
     </div>
     <div id="workspace"></div>
 </div>
 
 <script>
-/* ===============================
-   USERS + VIRTUAL FILESYSTEM
-================================ */
-let users = JSON.parse(localStorage.getItem("mornas_users")) || {};
-let currentUser = null;
-let fs = null;
+/* ============================
+   FILESYSTEM INIT
+============================ */
+let fs = {root:{type:"folder",children:{home:{type:"folder",children:{}}}}};
 let path = ["root","home"];
-function saveUsers(){ localStorage.setItem("mornas_users",JSON.stringify(users)); }
-function auth(){
-    const u=username.value.trim(), p=password.value.trim();
-    if(!u||!p) return;
-    if(!users[u]){users[u]={password:p,fs:{root:{home:{}}},created:Date.now()}; saveUsers();}
-    if(users[u].password===p){currentUser=u; fs=users[u].fs; loginScreen.style.display="none"; desktop.style.display="block"; startStatusMonitor();} else alert("Wrong password");
-}
+let selectedFiles = new Set();
 
-/* ===============================
+/* ============================
    WINDOW MANAGER
-================================ */
+============================ */
 let zIndexCounter=10;
 function createWindow(title,content){
     const win=document.createElement("div");
@@ -94,69 +72,99 @@ function attachControls(win){
     win.querySelector(".max").onclick=()=>{win.style.top="0";win.style.left="0";win.style.width="100%";win.style.height="100%";}
 }
 
-/* ===============================
+/* ============================
    APP LAUNCH
-================================ */
+============================ */
 function openApp(type){
-    if(type==="fileManager"){createWindow("File Manager","<div id='fileManagerRoot'></div>"); buildFileManager();}
+    if(type==="fileManager"){createWindow("File Manager","<div id='fileManagerRoot' style='display:flex;flex:1;'></div>"); buildFileManager();}
     if(type==="terminal"){createWindow("Terminal","<div id='terminalRoot'></div>"); buildTerminal();}
     if(type==="monitor"){createWindow("System Monitor","<div id='monitorRoot'></div>"); buildMonitor();}
-    if(type==="textEditor"){createWindow("Text Editor","<textarea id='editorArea' style='width:100%;height:100%;background:rgba(0,0,0,0.2);color:#fff;padding:10px;'></textarea>");}
-    if(type==="imageViewer"){createWindow("Image Viewer","<input type='file' id='imgUpload' accept='image/*'><br><img id='imgDisplay' style='max-width:100%;max-height:90%;margin-top:10px;'>"); 
-        setTimeout(()=>{document.getElementById("imgUpload").onchange=e=>{let file=e.target.files[0];let url=URL.createObjectURL(file);document.getElementById("imgDisplay").src=url;};},100);}
 }
 
-/* ===============================
+/* ============================
    STATUS MONITOR
-================================ */
+============================ */
 function startStatusMonitor(){
     setInterval(()=>{status.innerText="CPU "+Math.floor(Math.random()*60)+"% | RAM "+Math.floor(Math.random()*80)+"% | Items: "+Object.keys(getCurrentDir()).length;},2000);
 }
 
-/* ===============================
-   FILE MANAGER ENGINE
-================================ */
-function getCurrentDir(){let dir=fs; path.forEach(p=>{dir=dir[p].children||dir[p]}); return dir;}
+/* ============================
+   FILE MANAGER FUNCTIONS
+============================ */
+function getCurrentDir(){
+    let dir = fs; path.forEach(p=>{dir=dir[p].children||dir[p];});
+    return dir;
+}
 function pathString(){return "/"+path.slice(1).join("/");}
 function buildFileManager(){
     const root=document.getElementById("fileManagerRoot"); root.innerHTML="";
-    const toolbar=document.createElement("div"); toolbar.style.marginBottom="10px";
-    const newFile=document.createElement("button"); newFile.textContent="New File";
-    newFile.onclick=()=>{let n=prompt("File name"); if(!n) return; getCurrentDir()[n]={type:"file",size:0,created:Date.now()}; saveUsers(); buildFileManager();}; toolbar.appendChild(newFile);
-    const newFolder=document.createElement("button"); newFolder.textContent="New Folder";
-    newFolder.onclick=()=>{let n=prompt("Folder name"); if(!n) return; getCurrentDir()[n]={type:"folder",children:{},created:Date.now()}; saveUsers(); buildFileManager();}; toolbar.appendChild(newFolder);
-    const upBtn=document.createElement("button"); upBtn.textContent="Up"; upBtn.onclick=()=>{if(path.length>2) path.pop(); buildFileManager();}; toolbar.appendChild(upBtn);
-    const uploadBtn=document.createElement("button"); uploadBtn.textContent="Upload";
-    uploadBtn.onclick=()=>{const inp=document.createElement("input"); inp.type="file"; inp.onchange=e=>{const file=e.target.files[0]; if(!file) return; const reader=new FileReader(); reader.onload=f=>{
-        getCurrentDir()[file.name]={type:"file",content:f.target.result,size:file.size,created:Date.now()}; saveUsers(); buildFileManager();}; reader.readAsDataURL(file);}; inp.click();}; toolbar.appendChild(uploadBtn);
-    const downloadBtn=document.createElement("button"); downloadBtn.textContent="Download"; 
-    downloadBtn.onclick=()=>{let sel=prompt("File name to download"); if(sel && getCurrentDir()[sel] && getCurrentDir()[sel].type==="file"){
-        const a=document.createElement("a"); a.href=getCurrentDir()[sel].content||"#"; a.download=sel; a.click();}}; toolbar.appendChild(downloadBtn);
-    root.appendChild(toolbar);
-    Object.keys(getCurrentDir()).forEach(name=>{
-        const item=document.createElement("div"); item.className="fm-item"; item.textContent=name;
-        item.ondblclick=()=>{if(getCurrentDir()[name].type==="folder"){path.push(name); buildFileManager();} else alert("Open file: "+name);}
-        item.oncontextmenu=e=>showContextMenu(e,getCurrentDir(),name); root.appendChild(item);
+    root.style.display="flex";
+
+    const treeDiv=document.createElement("div"); treeDiv.id="fileTree"; root.appendChild(treeDiv);
+    const listDiv=document.createElement("div"); listDiv.id="fileList"; root.appendChild(listDiv);
+    const previewDiv=document.createElement("div"); previewDiv.id="previewPanel"; root.appendChild(previewDiv);
+
+    // Toolbar
+    const toolbar=document.createElement("div"); toolbar.style.marginBottom="10px"; listDiv.appendChild(toolbar);
+    ["New Folder","New File","Upload","Download","Delete"].forEach(action=>{
+        const btn=document.createElement("button"); btn.textContent=action; toolbar.appendChild(btn);
+        btn.onclick=()=>fileManagerAction(action);
+    });
+
+    buildTree(treeDiv,fs.root,0);
+    buildList();
+}
+function buildTree(container,node,level){
+    const div=document.createElement("div"); div.textContent=node.type==="folder"?nodeLabel(node):""; div.style.marginLeft=(level*10)+"px";
+    container.appendChild(div);
+    if(node.children) for(const k in node.children) buildTree(container,node.children[k],level+1);
+}
+function nodeLabel(node){return Object.keys(node.children||{}).length+" items";}
+function buildList(){
+    const listDiv=document.getElementById("fileList");
+    // Clear old items
+    [...listDiv.querySelectorAll(".file-item")].forEach(el=>el.remove());
+    const dir=getCurrentDir();
+    for(const name in dir){
+        const item=document.createElement("div"); item.className="file-item"; item.textContent=name;
+        if(selectedFiles.has(name)) item.classList.add("selected");
+        item.onclick=e=>{
+            if(e.ctrlKey) {selectedFiles.has(name)?selectedFiles.delete(name):selectedFiles.add(name);} 
+            else {selectedFiles.clear(); selectedFiles.add(name);}
+            buildList(); buildPreview();
+        };
+        item.ondblclick=()=>{if(dir[name].type==="folder"){path.push(name); selectedFiles.clear(); buildFileManager();} else buildPreview();}
+        listDiv.appendChild(item);
+    }
+    buildPreview();
+}
+function buildPreview(){
+    const preview=document.getElementById("previewPanel"); preview.innerHTML="";
+    const dir=getCurrentDir();
+    selectedFiles.forEach(name=>{
+        const file=dir[name]; 
+        if(file.type==="file"&&file.content){
+            if(file.content.startsWith("data:image")) preview.innerHTML+="<img src='"+file.content+"' style='max-width:100%;margin-bottom:10px;'><br>";
+            else preview.innerHTML+="<pre style='white-space:pre-wrap'>"+(file.content.slice(0,200))+"</pre>";
+        }
     });
 }
-let menu=null;
-function showContextMenu(e,dir,name){
-    if(menu) menu.remove();
-    menu=document.createElement("div"); menu.style.position="fixed"; menu.style.top=e.clientY+"px"; menu.style.left=e.clientX+"px";
-    menu.style.background="rgba(0,0,0,0.85)"; menu.style.backdropFilter="blur(10px)"; menu.style.borderRadius="10px"; menu.style.padding="5px"; menu.style.zIndex=9999;
-    const actions=[{name:"Delete",func:()=>{delete dir[name]; saveUsers(); buildFileManager(); menu.remove();}},
-                   {name:"Rename",func:()=>{let nn=prompt("New name",name); if(nn){dir[nn]=dir[name]; delete dir[name]; saveUsers(); buildFileManager(); menu.remove();}}}];
-    actions.forEach(a=>{const b=document.createElement("div");b.textContent=a.name;b.style.padding="5px 10px";b.style.cursor="pointer";
-        b.onmouseover=()=>b.style.background="rgba(255,255,255,0.2)"; b.onmouseout=()=>b.style.background="transparent"; b.onclick=a.func; menu.appendChild(b);});
-    document.body.appendChild(menu); document.addEventListener("click",()=>{if(menu) menu.remove(); menu=null;},{once:true});
+function fileManagerAction(action){
+    const dir=getCurrentDir();
+    if(action==="New Folder"){const n=prompt("Folder name"); if(n) dir[n]={type:"folder",children:{}};}
+    if(action==="New File"){const n=prompt("File name"); if(n) dir[n]={type:"file",content:"",size:0};}
+    if(action==="Upload"){const inp=document.createElement("input"); inp.type="file"; inp.onchange=e=>{const f=e.target.files[0]; const reader=new FileReader(); reader.onload=r=>{dir[f.name]={type:"file",content:r.target.result,size:f.size}; buildFileManager();}; reader.readAsDataURL(f);}; inp.click();}
+    if(action==="Download"){selectedFiles.forEach(name=>{const f=dir[name]; if(f.type==="file"&&f.content){const a=document.createElement("a"); a.href=f.content; a.download=name; a.click();}});}
+    if(action==="Delete"){selectedFiles.forEach(name=>{delete dir[name];}); selectedFiles.clear();}
+    buildList();
 }
 
-/* ===============================
+/* ============================
    TERMINAL
-================================ */
-function buildTerminal(rootDiv){
-    const container=document.getElementById(rootDiv); container.innerHTML="";
-    const output=document.createElement("div"); output.style.height="300px"; output.style.overflowY="auto"; output.style.background="black"; output.style.color="#0f0"; output.style.padding="10px"; container.appendChild(output);
+============================ */
+function buildTerminal(){
+    const container=document.getElementById("terminalRoot"); container.innerHTML="";
+    const output=document.createElement("div"); output.style.height="400px"; output.style.overflowY="auto"; output.style.background="black"; output.style.color="#0f0"; output.style.padding="10px"; container.appendChild(output);
     const input=document.createElement("input"); input.style.width="100%"; input.style.background="black"; input.style.color="#0f0"; container.appendChild(input); input.focus();
     input.addEventListener("keydown",e=>{if(e.key==="Enter"){const cmd=input.value.trim(); output.innerHTML+="<div>> "+cmd+"</div>"; executeTerm(cmd,output); input.value=""; output.scrollTop=output.scrollHeight;}});
 }
@@ -166,25 +174,31 @@ function executeTerm(cmd,out){
         case "ls": out.innerHTML+="<div>"+Object.keys(dir).join(" ")+"</div>"; break;
         case "cd": if(arg===".."){if(path.length>2) path.pop();}else if(dir[arg]&&dir[arg].type==="folder") path.push(arg); break;
         case "pwd": out.innerHTML+="<div>"+pathString()+"</div>"; break;
-        case "mkdir": if(arg){dir[arg]={type:"folder",children:{},created:Date.now()}; saveUsers();} break;
-        case "touch": if(arg){dir[arg]={type:"file",size:0,created:Date.now()}; saveUsers();} break;
+        case "mkdir": if(arg) dir[arg]={type:"folder",children:{}}; break;
+        case "touch": if(arg) dir[arg]={type:"file",content:"",size:0}; break;
+        case "cat": if(arg&&dir[arg]&&dir[arg].type==="file") out.innerHTML+="<pre style='white-space:pre-wrap'>"+dir[arg].content+"</pre>"; break;
         case "clear": out.innerHTML=""; break;
+        case "help": out.innerHTML+="<div>Commands: ls, cd, pwd, mkdir, touch, cat, clear, help</div>"; break;
         default: out.innerHTML+="<div>Command not found</div>";
     }
 }
 
-/* ===============================
+/* ============================
    SYSTEM MONITOR
-================================ */
-function buildMonitor(rootDiv){
-    const container=document.getElementById(rootDiv); container.innerHTML="";
+============================ */
+function buildMonitor(){
+    const container=document.getElementById("monitorRoot"); container.innerHTML="";
     const cpu=document.createElement("div"); const ram=document.createElement("div"); const storage=document.createElement("div");
     container.appendChild(cpu); container.appendChild(ram); container.appendChild(storage);
     setInterval(()=>{cpu.textContent="CPU Usage: "+Math.floor(Math.random()*70)+"%";
                      ram.textContent="RAM Usage: "+Math.floor(Math.random()*80)+"%";
                      storage.textContent="Storage items: "+Object.keys(getCurrentDir()).length;},1500);
 }
-</script>
 
+/* ============================
+   INIT
+============================ */
+startStatusMonitor();
+</script>
 </body>
 </html>
