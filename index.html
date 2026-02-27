@@ -1,122 +1,159 @@
-<!DOCTYPE html>
-<html lang="hu">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MORNAS OS Ultimate</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:Inter,Segoe UI,sans-serif}
-body{height:100vh;overflow:hidden;background:linear-gradient(135deg,#0f172a,#1e293b,#0f172a);color:#fff;}
-
-/* LOGIN */
-#loginScreen{position:absolute;inset:0;display:flex;justify-content:center;align-items:center;background:radial-gradient(circle at top,#1e293b,#0f172a);}
-.loginBox{width:350px;padding:40px;border-radius:20px;backdrop-filter:blur(30px);background:rgba(255,255,255,0.08);box-shadow:0 0 40px rgba(0,0,0,0.6);}
-.loginBox h2{text-align:center;margin-bottom:20px;}
-.loginBox input{width:100%;margin:10px 0;padding:10px;border-radius:10px;border:none;background:rgba(255,255,255,0.1);color:#fff;}
-.loginBox button{width:100%;padding:10px;margin-top:10px;border:none;border-radius:10px;background:#2563eb;color:#fff;cursor:pointer;}
-
-/* DESKTOP */
-#desktop{display:none;position:absolute;inset:0;}
-#topbar{height:50px;display:flex;justify-content:space-between;align-items:center;padding:0 20px;background:rgba(255,255,255,0.08);backdrop-filter:blur(25px);border-bottom:1px solid rgba(255,255,255,0.1);}
-#sidebar{position:absolute;top:50px;bottom:0;left:0;width:220px;padding:15px;backdrop-filter:blur(25px);background:rgba(255,255,255,0.05);border-right:1px solid rgba(255,255,255,0.1);}
-.appBtn{padding:12px;margin:10px 0;border-radius:12px;cursor:pointer;background:rgba(255,255,255,0.08);transition:.2s;}
-.appBtn:hover{background:rgba(255,255,255,0.15);}
-#workspace{position:absolute;top:50px;left:220px;right:0;bottom:0;overflow:hidden;}
-
-/* WINDOW */
-.window{position:absolute;width:750px;height:500px;border-radius:18px;backdrop-filter:blur(30px);background:rgba(255,255,255,0.08);box-shadow:0 0 50px rgba(0,0,0,0.5);overflow:hidden;display:flex;flex-direction:column;}
-.window-header{height:45px;display:flex;justify-content:space-between;align-items:center;padding:0 15px;background:rgba(255,255,255,0.1);cursor:move;}
-.window-controls button{width:22px;height:22px;margin-left:8px;border:none;border-radius:50%;cursor:pointer;}
-.close{background:#ef4444}.min{background:#f59e0b}.max{background:#10b981;}
-.window-content{flex:1;overflow:auto;padding:15px;}
-
-/* FILE MANAGER */
-.fm-item{padding:5px;cursor:pointer;}
-.fm-item:hover{background:rgba(255,255,255,0.1);}
-</style>
-</head>
-<body>
-
-<div id="loginScreen">
-    <div class="loginBox">
-        <h2>MORNAS OS Ultimate</h2>
-        <input id="username" placeholder="Username">
-        <input id="password" type="password" placeholder="Password">
-        <button onclick="auth()">Login / Register</button>
-    </div>
-</div>
-
-<div id="desktop">
-    <div id="topbar">
-        <div>MORNAS OS Ultimate</div>
-        <div id="status"></div>
-    </div>
-    <div id="sidebar">
-        <div class="appBtn" onclick="openApp('fileManager')">📂 File Manager</div>
-        <div class="appBtn" onclick="openApp('terminal')">💻 Terminal</div>
-        <div class="appBtn" onclick="openApp('monitor')">📊 System Monitor</div>
-    </div>
-    <div id="workspace"></div>
-</div>
-
 <script>
 /* ===============================
-   USER + FS
+   VIRTUAL FILE SYSTEM ENGINE
 ================================ */
-let users = JSON.parse(localStorage.getItem("mornas_users")) || {};
-let currentUser = null;
-let fs = null;
-let path = ["root","home"];
+function getCurrentDir(){
+    let dir = fs;
+    path.forEach(p => { dir = dir[p]; });
+    return dir;
+}
 
-function saveUsers(){ localStorage.setItem("mornas_users",JSON.stringify(users)); }
+function pathString(){ return "/"+path.slice(1).join("/"); }
 
-function auth(){
-    const u=username.value.trim(), p=password.value.trim();
-    if(!u||!p) return;
-    if(!users[u]){users[u]={password:p,fs:{root:{home:{}}},created:Date.now()}; saveUsers();}
-    if(users[u].password===p){currentUser=u; fs=users[u].fs; loginScreen.style.display="none"; desktop.style.display="block"; startStatusMonitor();} else alert("Wrong password"); 
+/* ===============================
+   FILE MANAGER APP
+================================ */
+function buildFileManager(){
+    const root = document.getElementById("fileManagerRoot");
+    root.innerHTML = "";
+
+    // Toolbar
+    const toolbar = document.createElement("div"); toolbar.style.marginBottom="10px";
+
+    const newFileBtn = document.createElement("button");
+    newFileBtn.textContent = "New File";
+    newFileBtn.onclick = () => {
+        let n = prompt("File name:"); if(!n) return;
+        getCurrentDir()[n] = {type:"file", size:0, created:Date.now()};
+        users[currentUser].fs = fs; saveUsers(); buildFileManager();
+    };
+    toolbar.appendChild(newFileBtn);
+
+    const newFolderBtn = document.createElement("button");
+    newFolderBtn.textContent = "New Folder";
+    newFolderBtn.onclick = () => {
+        let n = prompt("Folder name:"); if(!n) return;
+        getCurrentDir()[n] = {type:"folder", children:{}, created:Date.now()};
+        users[currentUser].fs = fs; saveUsers(); buildFileManager();
+    };
+    toolbar.appendChild(newFolderBtn);
+
+    const upBtn = document.createElement("button");
+    upBtn.textContent = "Up";
+    upBtn.onclick = () => { if(path.length>2) path.pop(); buildFileManager(); };
+    toolbar.appendChild(upBtn);
+
+    const searchInput = document.createElement("input");
+    searchInput.placeholder = "Search...";
+    searchInput.oninput = () => buildFileManagerFiltered(searchInput.value);
+    toolbar.appendChild(searchInput);
+
+    root.appendChild(toolbar);
+
+    renderDir(root,getCurrentDir());
+}
+
+function buildFileManagerFiltered(filter=""){
+    const root = document.getElementById("fileManagerRoot");
+    root.innerHTML = "";
+    const toolbar = document.createElement("div"); toolbar.style.marginBottom="10px";
+    const upBtn = document.createElement("button"); upBtn.textContent="Up";
+    upBtn.onclick = () => { if(path.length>2) path.pop(); buildFileManager(); };
+    toolbar.appendChild(upBtn);
+    root.appendChild(toolbar);
+
+    function renderFiltered(container,dir){
+        Object.keys(dir).forEach(name=>{
+            if(!name.toLowerCase().includes(filter.toLowerCase())) return;
+            const item = document.createElement("div");
+            item.className="fm-item"; item.textContent = name;
+            item.ondblclick = () => {
+                if(dir[name].type==="folder"){ path.push(name); buildFileManager(); }
+                else alert("Open file: "+name);
+            };
+            item.oncontextmenu = e => showContextMenu(e,dir,name);
+            container.appendChild(item);
+        });
+    }
+    renderFiltered(root,getCurrentDir());
 }
 
 /* ===============================
-   WINDOW MANAGER
+   CONTEXT MENU
 ================================ */
-let zIndexCounter=10;
-function createWindow(title,content){
-    const win=document.createElement("div");
-    win.className="window"; win.style.top="80px"; win.style.left="100px"; win.style.zIndex=++zIndexCounter;
-    win.innerHTML=`<div class="window-header"><span>${title}</span>
-    <div class="window-controls"><button class="min"></button><button class="max"></button><button class="close"></button></div></div>
-    <div class="window-content">${content}</div>`;
-    workspace.appendChild(win);
-    dragWindow(win);
-    attachControls(win);
-}
-function dragWindow(win){
-    const header=win.querySelector(".window-header"); let isDown=false,ox,oy;
-    header.onmousedown=e=>{isDown=true;ox=e.clientX-win.offsetLeft;oy=e.clientY-win.offsetTop;win.style.zIndex=++zIndexCounter;}
-    document.onmouseup=()=>isDown=false;
-    document.onmousemove=e=>{if(isDown){win.style.left=(e.clientX-ox)+"px";win.style.top=(e.clientY-oy)+"px";}}
-}
-function attachControls(win){win.querySelector(".close").onclick=()=>win.remove();
-win.querySelector(".min").onclick=()=>win.style.display="none";
-win.querySelector(".max").onclick=()=>{win.style.top="0";win.style.left="0";win.style.width="100%";win.style.height="100%";}}
+let menu = null;
+function showContextMenu(e,dir,name){
+    if(menu) menu.remove();
+    menu = document.createElement("div");
+    menu.style.position="fixed"; menu.style.top=e.clientY+"px"; menu.style.left=e.clientX+"px";
+    menu.style.background="rgba(0,0,0,0.85)"; menu.style.backdropFilter="blur(10px)";
+    menu.style.borderRadius="10px"; menu.style.padding="5px"; menu.style.zIndex=9999;
 
-/* ===============================
-   APP LAUNCH
-================================ */
-function openApp(type){
-    if(type==="fileManager"){createWindow("File Manager","<div id='fileManagerRoot'></div>"); buildFileManager();}
-    if(type==="terminal"){createWindow("Terminal","<div id='terminalRoot'></div>"); buildTerminal();}
-    if(type==="monitor"){createWindow("System Monitor","<div id='monitorRoot'></div>"); buildMonitor();}
+    const actions = [
+        {name:"Delete",func:()=>{delete dir[name]; saveUsers(); buildFileManager(); menu.remove();}},
+        {name:"Rename",func:()=>{let nn=prompt("New name",name); if(nn){dir[nn]=dir[name]; delete dir[name]; saveUsers(); buildFileManager(); menu.remove();}}}
+    ];
+
+    actions.forEach(a=>{
+        const b = document.createElement("div"); b.textContent = a.name;
+        b.style.padding="5px 10px"; b.style.cursor="pointer";
+        b.onmouseover = ()=>b.style.background="rgba(255,255,255,0.2)";
+        b.onmouseout = ()=>b.style.background="transparent";
+        b.onclick = a.func;
+        menu.appendChild(b);
+    });
+
+    document.body.appendChild(menu);
+    document.addEventListener("click",()=>{ if(menu) menu.remove(); menu=null; },{once:true});
 }
 
 /* ===============================
-   STATUS MONITOR
+   TERMINAL APP
 ================================ */
-function startStatusMonitor(){
-    setInterval(()=>{status.innerText="CPU "+Math.floor(Math.random()*60)+"% | RAM "+Math.floor(Math.random()*80)+"%";},2000);
+function buildTerminal(rootDiv){
+    const container = document.getElementById(rootDiv);
+    container.innerHTML="";
+    const output = document.createElement("div");
+    output.style.height="300px"; output.style.overflowY="auto"; output.style.background="black"; output.style.color="#0f0"; output.style.padding="10px";
+    container.appendChild(output);
+
+    const input = document.createElement("input");
+    input.style.width="100%"; input.style.background="black"; input.style.color="#0f0";
+    container.appendChild(input);
+    input.focus();
+
+    input.addEventListener("keydown",e=>{
+        if(e.key==="Enter"){
+            const cmd = input.value.trim(); output.innerHTML+="<div>> "+cmd+"</div>";
+            executeTerm(cmd,output);
+            input.value="";
+            output.scrollTop=output.scrollHeight;
+        }
+    });
+}
+
+function executeTerm(cmd,out){
+    const args = cmd.split(" "); const c=args[0]; const arg=args[1];
+    const dir = getCurrentDir();
+    switch(c){
+        case "ls": out.innerHTML+= "<div>"+Object.keys(dir).join(" ")+"</div>"; break;
+        case "cd": if(arg===".."){ if(path.length>2) path.pop(); } else if(dir[arg]&&dir[arg].type==="folder") path.push(arg); break;
+        case "pwd": out.innerHTML+= "<div>"+pathString()+"</div>"; break;
+        case "mkdir": if(arg){dir[arg]={type:"folder",children:{},created:Date.now()}; saveUsers();} break;
+        case "touch": if(arg){dir[arg]={type:"file",size:0,created:Date.now()}; saveUsers();} break;
+        case "clear": out.innerHTML=""; break;
+        default: out.innerHTML+="<div>Command not found</div>";
+    }
+}
+
+/* ===============================
+   SYSTEM MONITOR
+================================ */
+function buildMonitor(rootDiv){
+    const container = document.getElementById(rootDiv); container.innerHTML="";
+    const cpu = document.createElement("div"); const ram = document.createElement("div");
+    container.appendChild(cpu); container.appendChild(ram);
+    setInterval(()=>{ cpu.textContent="CPU Usage: "+Math.floor(Math.random()*70)+"%";
+                      ram.textContent="RAM Usage: "+Math.floor(Math.random()*80)+"%"; },1500);
 }
 </script>
-
-</body>
-</html>
