@@ -3,62 +3,28 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MORNAS OS – Core + File Manager</title>
+<title>MORNAS OS Ultimate</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:Inter,Segoe UI,sans-serif}
-
-body{
-    height:100vh;
-    overflow:hidden;
-    background:linear-gradient(135deg,#0f172a,#1e293b,#0f172a);
-    color:#fff;
-}
+body{height:100vh;overflow:hidden;background:linear-gradient(135deg,#0f172a,#1e293b,#0f172a);color:#fff;}
 
 /* LOGIN */
-#loginScreen{
-    position:absolute;
-    inset:0;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    background:radial-gradient(circle at top,#1e293b,#0f172a);
-}
-.loginBox{
-    width:320px;
-    padding:40px;
-    border-radius:20px;
-    backdrop-filter:blur(30px);
-    background:rgba(255,255,255,0.08);
-    box-shadow:0 0 40px rgba(0,0,0,0.6);
-}
+#loginScreen{position:absolute;inset:0;display:flex;justify-content:center;align-items:center;background:radial-gradient(circle at top,#1e293b,#0f172a);}
+.loginBox{width:350px;padding:40px;border-radius:20px;backdrop-filter:blur(30px);background:rgba(255,255,255,0.08);box-shadow:0 0 40px rgba(0,0,0,0.6);}
 .loginBox h2{text-align:center;margin-bottom:20px;}
-.loginBox input{
-    width:100%;margin:10px 0;padding:10px;
-    border-radius:10px;border:none;background:rgba(255,255,255,0.1);color:#fff;
-}
-.loginBox button{
-    width:100%;padding:10px;margin-top:10px;
-    border:none;border-radius:10px;background:#2563eb;color:#fff;cursor:pointer;
-}
+.loginBox input{width:100%;margin:10px 0;padding:10px;border-radius:10px;border:none;background:rgba(255,255,255,0.1);color:#fff;}
+.loginBox button{width:100%;padding:10px;margin-top:10px;border:none;border-radius:10px;background:#2563eb;color:#fff;cursor:pointer;}
 
 /* DESKTOP */
 #desktop{display:none;position:absolute;inset:0;}
-#topbar{
-    height:50px;display:flex;justify-content:space-between;align-items:center;
-    padding:0 20px;background:rgba(255,255,255,0.08);backdrop-filter:blur(25px);
-    border-bottom:1px solid rgba(255,255,255,0.1);
-}
-#sidebar{
-    position:absolute;top:50px;bottom:0;left:0;width:220px;padding:15px;
-    backdrop-filter:blur(25px);background:rgba(255,255,255,0.05);border-right:1px solid rgba(255,255,255,0.1);
-}
+#topbar{height:50px;display:flex;justify-content:space-between;align-items:center;padding:0 20px;background:rgba(255,255,255,0.08);backdrop-filter:blur(25px);border-bottom:1px solid rgba(255,255,255,0.1);}
+#sidebar{position:absolute;top:50px;bottom:0;left:0;width:220px;padding:15px;backdrop-filter:blur(25px);background:rgba(255,255,255,0.05);border-right:1px solid rgba(255,255,255,0.1);}
 .appBtn{padding:12px;margin:10px 0;border-radius:12px;cursor:pointer;background:rgba(255,255,255,0.08);transition:.2s;}
 .appBtn:hover{background:rgba(255,255,255,0.15);}
 #workspace{position:absolute;top:50px;left:220px;right:0;bottom:0;overflow:hidden;}
 
 /* WINDOW */
-.window{position:absolute;width:700px;height:450px;border-radius:18px;backdrop-filter:blur(30px);
-background:rgba(255,255,255,0.08);box-shadow:0 0 50px rgba(0,0,0,0.5);overflow:hidden;display:flex;flex-direction:column;}
+.window{position:absolute;width:750px;height:500px;border-radius:18px;backdrop-filter:blur(30px);background:rgba(255,255,255,0.08);box-shadow:0 0 50px rgba(0,0,0,0.5);overflow:hidden;display:flex;flex-direction:column;}
 .window-header{height:45px;display:flex;justify-content:space-between;align-items:center;padding:0 15px;background:rgba(255,255,255,0.1);cursor:move;}
 .window-controls button{width:22px;height:22px;margin-left:8px;border:none;border-radius:50%;cursor:pointer;}
 .close{background:#ef4444}.min{background:#f59e0b}.max{background:#10b981;}
@@ -73,7 +39,7 @@ background:rgba(255,255,255,0.08);box-shadow:0 0 50px rgba(0,0,0,0.5);overflow:h
 
 <div id="loginScreen">
     <div class="loginBox">
-        <h2>MORNAS OS</h2>
+        <h2>MORNAS OS Ultimate</h2>
         <input id="username" placeholder="Username">
         <input id="password" type="password" placeholder="Password">
         <button onclick="auth()">Login / Register</button>
@@ -82,11 +48,13 @@ background:rgba(255,255,255,0.08);box-shadow:0 0 50px rgba(0,0,0,0.5);overflow:h
 
 <div id="desktop">
     <div id="topbar">
-        <div>MORNAS OS Enterprise</div>
+        <div>MORNAS OS Ultimate</div>
         <div id="status"></div>
     </div>
     <div id="sidebar">
         <div class="appBtn" onclick="openApp('fileManager')">📂 File Manager</div>
+        <div class="appBtn" onclick="openApp('terminal')">💻 Terminal</div>
+        <div class="appBtn" onclick="openApp('monitor')">📊 System Monitor</div>
     </div>
     <div id="workspace"></div>
 </div>
@@ -106,7 +74,7 @@ function auth(){
     const u=username.value.trim(), p=password.value.trim();
     if(!u||!p) return;
     if(!users[u]){users[u]={password:p,fs:{root:{home:{}}},created:Date.now()}; saveUsers();}
-    if(users[u].password===p){currentUser=u; fs=users[u].fs; loginScreen.style.display="none"; desktop.style.display="block";} else alert("Wrong password"); 
+    if(users[u].password===p){currentUser=u; fs=users[u].fs; loginScreen.style.display="none"; desktop.style.display="block"; startStatusMonitor();} else alert("Wrong password"); 
 }
 
 /* ===============================
@@ -132,42 +100,21 @@ function dragWindow(win){
 function attachControls(win){win.querySelector(".close").onclick=()=>win.remove();
 win.querySelector(".min").onclick=()=>win.style.display="none";
 win.querySelector(".max").onclick=()=>{win.style.top="0";win.style.left="0";win.style.width="100%";win.style.height="100%";}}
+
+/* ===============================
+   APP LAUNCH
+================================ */
 function openApp(type){
     if(type==="fileManager"){createWindow("File Manager","<div id='fileManagerRoot'></div>"); buildFileManager();}
+    if(type==="terminal"){createWindow("Terminal","<div id='terminalRoot'></div>"); buildTerminal();}
+    if(type==="monitor"){createWindow("System Monitor","<div id='monitorRoot'></div>"); buildMonitor();}
 }
 
 /* ===============================
-   FILE MANAGER
+   STATUS MONITOR
 ================================ */
-function getCurrentDir(){ let dir=fs; path.forEach(p=>dir=dir[p]); return dir; }
-function buildFileManager(){
-    const root=document.getElementById("fileManagerRoot"); root.innerHTML="";
-    const toolbar=document.createElement("div"); toolbar.style.marginBottom="10px";
-
-    const newFile=document.createElement("button"); newFile.textContent="New File"; newFile.onclick=()=>{let n=prompt("File name"); if(!n) return; getCurrentDir()[n]=""; saveUsers(); buildFileManager();}; toolbar.appendChild(newFile);
-    const newFolder=document.createElement("button"); newFolder.textContent="New Folder"; newFolder.onclick=()=>{let n=prompt("Folder name"); if(!n) return; getCurrentDir()[n]={}; saveUsers(); buildFileManager();}; toolbar.appendChild(newFolder);
-    const upBtn=document.createElement("button"); upBtn.textContent="Up"; upBtn.onclick=()=>{if(path.length>2) path.pop(); buildFileManager();}; toolbar.appendChild(upBtn);
-
-    root.appendChild(toolbar);
-
-    Object.keys(getCurrentDir()).forEach(name=>{
-        const item=document.createElement("div");
-        item.textContent=name; item.className="fm-item";
-        item.ondblclick=()=>{if(typeof getCurrentDir()[name]==="object"){path.push(name); buildFileManager();}else alert("Open file: "+name);}
-        item.oncontextmenu=e=>{
-            e.preventDefault();
-            const menu=document.createElement("div");
-            menu.style.position="fixed"; menu.style.top=e.clientY+"px"; menu.style.left=e.clientX+"px";
-            menu.style.background="rgba(0,0,0,0.8)"; menu.style.padding="5px"; menu.style.borderRadius="10px";
-            const actions=[{name:"Delete",func:()=>{delete getCurrentDir()[name]; saveUsers(); buildFileManager(); menu.remove();}},
-                           {name:"Rename",func:()=>{let nn=prompt("New name",name); if(nn){getCurrentDir()[nn]=getCurrentDir()[name]; delete getCurrentDir()[name]; saveUsers(); buildFileManager(); menu.remove();}}}];
-            actions.forEach(a=>{const b=document.createElement("div");b.textContent=a.name;b.style.padding="5px 10px";b.style.cursor="pointer";
-            b.onmouseover=()=>b.style.background="rgba(255,255,255,0.2)"; b.onmouseout=()=>b.style.background="transparent"; b.onclick=a.func; menu.appendChild(b);});
-            document.body.appendChild(menu);
-            document.addEventListener("click",()=>{if(menu) menu.remove(); menu=null;},{once:true});
-        };
-        root.appendChild(item);
-    });
+function startStatusMonitor(){
+    setInterval(()=>{status.innerText="CPU "+Math.floor(Math.random()*60)+"% | RAM "+Math.floor(Math.random()*80)+"%";},2000);
 }
 </script>
 
