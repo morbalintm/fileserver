@@ -2,221 +2,189 @@
 <html lang="hu">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Advanced Web File Manager</title>
-
+<title>Web Linux Terminal</title>
 <style>
-* { box-sizing: border-box; margin:0; padding:0; font-family:Segoe UI, sans-serif; }
-
 body {
-    display:flex;
-    height:100vh;
-    background:#1e1e1e;
-    color:#eee;
-    transition:0.3s;
-}
-
-.light {
-    background:#f4f4f4;
-    color:#222;
-}
-
-.sidebar {
-    width:300px;
-    background:#252526;
+    background:#000;
+    color:#0f0;
+    font-family:monospace;
+    margin:0;
     padding:15px;
-    overflow-y:auto;
-    border-right:1px solid #333;
 }
 
-.light .sidebar { background:#fff; }
-
-.editor {
-    flex:1;
-    display:flex;
-    flex-direction:column;
+#terminal {
+    white-space:pre-wrap;
 }
-
-.toolbar {
-    padding:10px;
-    background:#333;
-    display:flex;
-    gap:10px;
-}
-
-.light .toolbar { background:#ddd; }
-
-button {
-    padding:6px 12px;
-    border:none;
-    background:#007acc;
-    color:white;
-    cursor:pointer;
-    border-radius:4px;
-}
-
-button:hover { opacity:0.8; }
 
 input {
-    padding:5px;
-    width:100%;
-    margin-bottom:8px;
-}
-
-.file {
-    padding:6px;
-    cursor:pointer;
-    border-radius:4px;
-}
-
-.file:hover {
-    background:#007acc;
-}
-
-textarea {
-    flex:1;
-    resize:none;
-    padding:15px;
+    background:transparent;
     border:none;
-    outline:none;
+    color:#0f0;
     font-family:monospace;
-    font-size:14px;
-    background:#1e1e1e;
-    color:#eee;
-}
-
-.light textarea {
-    background:#fff;
-    color:#000;
-}
-
-.folder {
-    font-weight:bold;
-    margin-top:8px;
+    outline:none;
+    width:80%;
 }
 </style>
 </head>
-
 <body>
 
-<div class="sidebar">
-    <input type="text" id="search" placeholder="Keresés...">
-    <button onclick="newFolder()">Új mappa</button>
-    <button onclick="newFile()">Új fájl</button>
-    <button onclick="exportFiles()">Export JSON</button>
-    <button onclick="importFiles()">Import JSON</button>
-    <button onclick="toggleTheme()">Téma váltás</button>
-    <hr>
-    <div id="fileTree"></div>
-</div>
-
-<div class="editor">
-    <div class="toolbar">
-        <span id="currentFile">Nincs megnyitva</span>
-        <button onclick="saveFile()">Mentés</button>
-        <button onclick="deleteFile()">Törlés</button>
-    </div>
-    <textarea id="editor" placeholder="Itt szerkesztheted a fájlt..."></textarea>
-</div>
+<div id="terminal"></div>
 
 <script>
+let fileSystem = JSON.parse(localStorage.getItem("vfs")) || {
+    home: {
+        user: {
+            "readme.txt": "Üdv a Web Linux Terminalben!"
+        }
+    }
+};
 
-let fileSystem = JSON.parse(localStorage.getItem("fileSystem")) || {};
-let currentPath = null;
+let currentPath = ["home","user"];
+let history = [];
+let historyIndex = -1;
 
-function saveStorage() {
-    localStorage.setItem("fileSystem", JSON.stringify(fileSystem));
+const terminal = document.getElementById("terminal");
+
+function saveFS(){
+    localStorage.setItem("vfs", JSON.stringify(fileSystem));
 }
 
-function renderTree(filter="") {
-    const tree = document.getElementById("fileTree");
-    tree.innerHTML = "";
-    Object.keys(fileSystem).forEach(name=>{
-        if(name.toLowerCase().includes(filter.toLowerCase())){
-            const div = document.createElement("div");
-            div.className = "file";
-            div.textContent = name;
-            div.onclick = ()=>openFile(name);
-            div.draggable = true;
-            div.ondragstart = e=>e.dataTransfer.setData("text", name);
-            tree.appendChild(div);
+function getCurrentDir(){
+    let dir = fileSystem;
+    currentPath.forEach(p => dir = dir[p]);
+    return dir;
+}
+
+function renderPrompt(){
+    terminal.innerHTML += `\nuser@web:/${currentPath.join("/")}$ `;
+    const input = document.createElement("input");
+    terminal.appendChild(input);
+    input.focus();
+
+    input.addEventListener("keydown", e=>{
+        if(e.key==="Enter"){
+            const cmd = input.value;
+            history.push(cmd);
+            historyIndex = history.length;
+            terminal.innerHTML += cmd;
+            input.remove();
+            execute(cmd);
+            renderPrompt();
+        }
+
+        if(e.key==="ArrowUp"){
+            if(historyIndex>0){
+                historyIndex--;
+                input.value = history[historyIndex];
+            }
+        }
+
+        if(e.key==="ArrowDown"){
+            if(historyIndex<history.length-1){
+                historyIndex++;
+                input.value = history[historyIndex];
+            }
+        }
+
+        if(e.key==="Tab"){
+            e.preventDefault();
+            autocomplete(input);
         }
     });
+
+    window.scrollTo(0,document.body.scrollHeight);
 }
 
-function newFile() {
-    const name = prompt("Fájlnév:");
-    if(!name) return;
-    fileSystem[name] = "";
-    saveStorage();
-    renderTree();
-}
+function execute(command){
+    const [cmd,...args] = command.split(" ");
 
-function newFolder() {
-    alert("Ez a verzió mappa-szimuláció nélküli flat rendszer.");
-}
+    switch(cmd){
 
-function openFile(name) {
-    currentPath = name;
-    document.getElementById("editor").value = fileSystem[name];
-    document.getElementById("currentFile").textContent = name;
-}
+        case "ls":
+            const dir = getCurrentDir();
+            terminal.innerHTML += "\n" + Object.keys(dir).join("  ");
+            break;
 
-function saveFile() {
-    if(!currentPath) return;
-    fileSystem[currentPath] = document.getElementById("editor").value;
-    saveStorage();
-    alert("Mentve!");
-}
+        case "pwd":
+            terminal.innerHTML += "\n/" + currentPath.join("/");
+            break;
 
-function deleteFile() {
-    if(!currentPath) return;
-    if(confirm("Biztos törlöd?")){
-        delete fileSystem[currentPath];
-        currentPath=null;
-        document.getElementById("editor").value="";
-        document.getElementById("currentFile").textContent="Nincs megnyitva";
-        saveStorage();
-        renderTree();
+        case "cd":
+            changeDir(args[0]);
+            break;
+
+        case "mkdir":
+            getCurrentDir()[args[0]] = {};
+            saveFS();
+            break;
+
+        case "touch":
+            getCurrentDir()[args[0]] = "";
+            saveFS();
+            break;
+
+        case "rm":
+            delete getCurrentDir()[args[0]];
+            saveFS();
+            break;
+
+        case "cat":
+            terminal.innerHTML += "\n" + getCurrentDir()[args[0]];
+            break;
+
+        case "clear":
+            terminal.innerHTML="";
+            break;
+
+        case "help":
+            terminal.innerHTML += `
+            
+ls
+cd <dir>
+pwd
+mkdir <name>
+touch <name>
+rm <name>
+cat <file>
+clear
+help
+`;
+            break;
+
+        default:
+            if(cmd.trim()!=="")
+                terminal.innerHTML += "\nCommand not found";
     }
 }
 
-function exportFiles() {
-    const data = JSON.stringify(fileSystem);
-    const blob = new Blob([data], {type:"application/json"});
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "files.json";
-    a.click();
+function changeDir(target){
+    if(target===".."){
+        if(currentPath.length>0) currentPath.pop();
+        return;
+    }
+
+    const dir = getCurrentDir();
+    if(dir[target] && typeof dir[target]==="object"){
+        currentPath.push(target);
+    } else {
+        terminal.innerHTML += "\nNo such directory";
+    }
 }
 
-function importFiles() {
-    const input = document.createElement("input");
-    input.type="file";
-    input.accept=".json";
-    input.onchange = e=>{
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onload = ()=>{
-            fileSystem = JSON.parse(reader.result);
-            saveStorage();
-            renderTree();
-        };
-        reader.readAsText(file);
-    };
-    input.click();
+function autocomplete(input){
+    const value = input.value.split(" ");
+    if(value.length<2) return;
+    const partial = value[1];
+    const dir = getCurrentDir();
+    const match = Object.keys(dir).find(name=>name.startsWith(partial));
+    if(match){
+        value[1] = match;
+        input.value = value.join(" ");
+    }
 }
 
-function toggleTheme() {
-    document.body.classList.toggle("light");
-}
-
-document.getElementById("search").addEventListener("input", e=>{
-    renderTree(e.target.value);
-});
-
-renderTree();
-
+terminal.innerHTML="Web Linux Terminal\nType 'help'\n";
+renderPrompt();
 </script>
 
 </body>
