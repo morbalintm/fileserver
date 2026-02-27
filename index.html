@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MORNAS OS Ultimate NAS</title>
+<title>MORNAS OS NAS Ultimate</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:Inter,Segoe UI,sans-serif}
 body{height:100vh;overflow:hidden;background:linear-gradient(135deg,#0f172a,#1e293b,#0f172a);color:#fff;}
@@ -31,7 +31,7 @@ body{height:100vh;overflow:hidden;background:linear-gradient(135deg,#0f172a,#1e2
 
 <div id="loginScreen">
     <div class="loginBox">
-        <h2>MORNAS OS Ultimate NAS</h2>
+        <h2>MORNAS OS NAS Ultimate</h2>
         <input id="username" placeholder="Username">
         <input id="password" type="password" placeholder="Password">
         <button onclick="auth()">Login / Register</button>
@@ -40,7 +40,7 @@ body{height:100vh;overflow:hidden;background:linear-gradient(135deg,#0f172a,#1e2
 
 <div id="desktop">
     <div id="topbar">
-        <div>MORNAS OS Ultimate</div>
+        <div>MORNAS OS NAS Ultimate</div>
         <div id="status"></div>
     </div>
     <div id="sidebar">
@@ -106,73 +106,6 @@ function openApp(type){
 function startStatusMonitor(){
     setInterval(()=>{status.innerText="CPU "+Math.floor(Math.random()*60)+"% | RAM "+Math.floor(Math.random()*80)+"%";},2000);
 }
-
-/* ===============================
-   FILE MANAGER ENGINE
-================================ */
-function getCurrentDir(){let dir=fs; path.forEach(p=>{dir=dir[p].children||dir[p]}); return dir;}
-function pathString(){return "/"+path.slice(1).join("/");}
-function buildFileManager(){
-    const root=document.getElementById("fileManagerRoot"); root.innerHTML="";
-    const toolbar=document.createElement("div"); toolbar.style.marginBottom="10px";
-    const newFile=document.createElement("button"); newFile.textContent="New File";
-    newFile.onclick=()=>{let n=prompt("File name"); if(!n) return; getCurrentDir()[n]={type:"file",size:0,created:Date.now()}; saveUsers(); buildFileManager();}; toolbar.appendChild(newFile);
-    const newFolder=document.createElement("button"); newFolder.textContent="New Folder";
-    newFolder.onclick=()=>{let n=prompt("Folder name"); if(!n) return; getCurrentDir()[n]={type:"folder",children:{},created:Date.now()}; saveUsers(); buildFileManager();}; toolbar.appendChild(newFolder);
-    const upBtn=document.createElement("button"); upBtn.textContent="Up"; upBtn.onclick=()=>{if(path.length>2) path.pop(); buildFileManager();}; toolbar.appendChild(upBtn);
-    root.appendChild(toolbar);
-    Object.keys(getCurrentDir()).forEach(name=>{
-        const item=document.createElement("div"); item.className="fm-item"; item.textContent=name;
-        item.ondblclick=()=>{if(getCurrentDir()[name].type==="folder"){path.push(name); buildFileManager();} else alert("Open file: "+name);}
-        item.oncontextmenu=e=>showContextMenu(e,getCurrentDir(),name); root.appendChild(item);
-    });
-}
-let menu=null;
-function showContextMenu(e,dir,name){
-    if(menu) menu.remove();
-    menu=document.createElement("div"); menu.style.position="fixed"; menu.style.top=e.clientY+"px"; menu.style.left=e.clientX+"px";
-    menu.style.background="rgba(0,0,0,0.85)"; menu.style.backdropFilter="blur(10px)"; menu.style.borderRadius="10px"; menu.style.padding="5px"; menu.style.zIndex=9999;
-    const actions=[{name:"Delete",func:()=>{delete dir[name]; saveUsers(); buildFileManager(); menu.remove();}},
-                   {name:"Rename",func:()=>{let nn=prompt("New name",name); if(nn){dir[nn]=dir[name]; delete dir[name]; saveUsers(); buildFileManager(); menu.remove();}}}];
-    actions.forEach(a=>{const b=document.createElement("div");b.textContent=a.name;b.style.padding="5px 10px";b.style.cursor="pointer";
-        b.onmouseover=()=>b.style.background="rgba(255,255,255,0.2)"; b.onmouseout=()=>b.style.background="transparent"; b.onclick=a.func; menu.appendChild(b);});
-    document.body.appendChild(menu); document.addEventListener("click",()=>{if(menu) menu.remove(); menu=null;},{once:true});
-}
-
-/* ===============================
-   TERMINAL
-================================ */
-function buildTerminal(rootDiv){
-    const container=document.getElementById(rootDiv); container.innerHTML="";
-    const output=document.createElement("div"); output.style.height="300px"; output.style.overflowY="auto"; output.style.background="black"; output.style.color="#0f0"; output.style.padding="10px"; container.appendChild(output);
-    const input=document.createElement("input"); input.style.width="100%"; input.style.background="black"; input.style.color="#0f0"; container.appendChild(input); input.focus();
-    input.addEventListener("keydown",e=>{if(e.key==="Enter"){const cmd=input.value.trim(); output.innerHTML+="<div>> "+cmd+"</div>"; executeTerm(cmd,output); input.value=""; output.scrollTop=output.scrollHeight;}});
-}
-function executeTerm(cmd,out){
-    const args=cmd.split(" "); const c=args[0]; const arg=args[1]; const dir=getCurrentDir();
-    switch(c){
-        case "ls": out.innerHTML+="<div>"+Object.keys(dir).join(" ")+"</div>"; break;
-        case "cd": if(arg===".."){if(path.length>2) path.pop();}else if(dir[arg]&&dir[arg].type==="folder") path.push(arg); break;
-        case "pwd": out.innerHTML+="<div>"+pathString()+"</div>"; break;
-        case "mkdir": if(arg){dir[arg]={type:"folder",children:{},created:Date.now()}; saveUsers();} break;
-        case "touch": if(arg){dir[arg]={type:"file",size:0,created:Date.now()}; saveUsers();} break;
-        case "clear": out.innerHTML=""; break;
-        default: out.innerHTML+="<div>Command not found</div>";
-    }
-}
-
-/* ===============================
-   SYSTEM MONITOR
-================================ */
-function buildMonitor(rootDiv){
-    const container=document.getElementById(rootDiv); container.innerHTML="";
-    const cpu=document.createElement("div"); const ram=document.createElement("div"); const storage=document.createElement("div");
-    container.appendChild(cpu); container.appendChild(ram); container.appendChild(storage);
-    setInterval(()=>{cpu.textContent="CPU Usage: "+Math.floor(Math.random()*70)+"%";
-                     ram.textContent="RAM Usage: "+Math.floor(Math.random()*80)+"%";
-                     storage.textContent="Storage used: "+Object.keys(getCurrentDir()).length+" items";},1500);
-}
 </script>
-
 </body>
 </html>
